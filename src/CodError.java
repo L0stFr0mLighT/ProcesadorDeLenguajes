@@ -1,0 +1,7 @@
+public enum CodError{
+    CADENATOOLARGE,
+    INTTOOLARGE,
+    IDTOOLARGE,
+    REALTOOLARGE,
+    INVALIDCARACTER
+}
