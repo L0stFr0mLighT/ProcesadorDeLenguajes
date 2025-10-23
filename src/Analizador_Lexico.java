@@ -7,6 +7,15 @@ import es.upm.aedlib.indexedlist.ArrayIndexedList;
 
 
 public class Analizador_Lexico {
+
+    /* 
+     * MODELIZACION DE LA TABLA DE SIMBOLOS
+     * Mapa (key, value):  
+     * Key: Identificador (numero) del estado actual antes de transitar
+     * Value: ArrayList de Pairs (Integer,Character)
+     *      -Integer: Identificador (numero) del estado destino despues de transitar  
+     *      -Character: Identificador (letra) de la accion semantica a ejecutar 
+    */
     private HashTableMap<Integer,ArrayIndexedList<Pair<Integer,Character>>> automata;
     private Integer estado_actual;
     private Integer estado_destino;
@@ -18,19 +27,22 @@ public class Analizador_Lexico {
     private int columna;
     private boolean primeraLectura = true;
 
-    //(DEL, /, *, ', DIGITO,. , LETRA, _, &, |, (, ), {, }, ;, +, -, <, >, =, !, EOF)
-    
     public Analizador_Lexico(String ruta, TS_Gestor gestor) {
         this.archivo = new File(ruta);
         this.gestor = gestor;
         this.carActual = null;
         this.lineaActual = 1;
         this.columna = 0;
+
+        //Archivo inexistente
         try {
             this.fr = new FileReader(archivo);
         } catch (FileNotFoundException e) {
-            e.printStackTrace();
+            System.err.println("Archivo no encontrado");
         }
+
+        //INTRODUCCION DE DATOS A TABLA DE TRANSICIONES
+        //------------------------------------------------------------------------------------------
 
         automata = new HashTableMap<>();
         ArrayIndexedList<Pair<Integer,Character>> estado0 = new ArrayIndexedList<>();
@@ -315,6 +327,9 @@ public class Analizador_Lexico {
         estado_actual = 0;
     }
 
+    //CUERPO DEL ANALIZADOR LEXICO
+    //------------------------------------------------------------------------------------------
+
     public Token iniciar() throws Err {
         Token token = null;
         Integer charEnum;
@@ -326,35 +341,44 @@ public class Analizador_Lexico {
         estado_actual = 0;
 
         try{
+
+            //Consideramos la posibilidad de venir de un o.c (4-10)(5-11)(8-17)
+            //En este caso no leemos para no perder el caracter ya guardado anteriormente
             if(primeraLectura){
                 carActual = leer(fr);
             } primeraLectura = false;
 
+            //Estados finales >= 10 (Volvemos a 0 en caso de serlo)
             while (estado_actual < 10){
 
-            
+                //Analizamos caracter leido (-1 en caso de ser uno no identificado)
                 charEnum = getcharEnum(carActual);
                 
                 if(charEnum == -1){
+                    //Si es cadena (estado 9) ó comentario (estado 2 ó 3), ignoramos 
                     if(estado_actual == 9){
                         accion = 'K'; estado_destino = 9;
                     }else if(estado_actual == 2 || estado_actual == 3){
                         accion = 'A'; estado_destino = 2;
                     } else throw new InvalidCaracterErr(lineaActual,columna,estado_actual,Caracteres.values()[charEnum]);
 
-                } else{
+                } 
+                /*En caso de existir caracter, descomponemos en:
+                *   -accion: accion semantica que tenemos que ejecutar
+                *   -estado_destino: estado a donde transitaremos 
+                */
+                else{
                     accion = automata.get(estado_actual).get(charEnum).getRight();
                     estado_destino = automata.get(estado_actual).get(charEnum).getLeft();
                 }
                 
-                //Gestion de errores
+                //Si el caracter leido no es aceptado (transicion inexistente)
                 if (estado_destino == null) {
                     throw new InvalidCaracterErr(lineaActual,columna,estado_actual,Caracteres.values()[charEnum]);
                 }
-                
-                //Se lee siempre menos cuando oc = true
+              
                 switch (accion) {
-                    //Leo (0-0)
+                    //Leer (0-0)
                     case 'A': carActual = leer(fr); break;
                     //Principio digito (0-4)
                     case 'B':
@@ -368,6 +392,7 @@ public class Analizador_Lexico {
                         break;
                     //Genero Token Entero (4-10)
                     case 'D':
+                        //EXCEPTION: entero demasiado grande
                         if(num >= 32767) throw new IntTooLargeErr(lineaActual,columna,estado_actual,Caracteres.values()[charEnum], (int)num);
                         token = new Token(TipoToken.TYPE_ENTERO, (Integer) (int) num);
                         break;
@@ -385,6 +410,7 @@ public class Analizador_Lexico {
                         break;
                     //Genero Token real (5-11)
                     case 'G':
+                        //EXCEPTION: inexistencia de decimales ó real demasiado grande
                         if(!(countDecimales > 0 && num < 117549436.0))
                             throw new RealTooLargeErr(lineaActual,columna,estado_actual,Caracteres.values()[charEnum],(double)num, countDecimales); 
                         token = new Token(TipoToken.TYPE_REAL, num + dec / Math.pow(10, countDecimales));
@@ -413,7 +439,9 @@ public class Analizador_Lexico {
                         break;
                     //Genero Token ID (8-17)
                     case 'L':
+                        //EXCEPTION: id demasiado grande
                         if (lex.length() >= 64)throw new IdTooLargeErr(lineaActual, columna,estado_actual, Caracteres.values()[charEnum]);
+                        //Si no encontramos el identificador 
                         if(gestor.getEntradaTPalabrasReservadas(lex) == 0){
                             if(gestor.getEntradaTSGlobal(lex) == 0){
                                 int pos=gestor.addEntradaTSGlobal(lex);
@@ -423,6 +451,7 @@ public class Analizador_Lexico {
                                 token = new Token(TipoToken.TYPE_IDENTIFICADOR, (Integer) pos);
                             } else token = new Token(TipoToken.TYPE_IDENTIFICADOR, (Integer) gestor.getEntradaTSGlobal(lex));
                         } else {
+                            //Analizamos palabra reservada
                             switch(gestor.getEntradaTPalabrasReservadas(lex)){
                                 case 1: token = new Token(TipoToken.TYPE_LET, (Integer) null); break;
                                 case 2: token = new Token(TipoToken.TYPE_INT, (Integer) null); break;
@@ -510,7 +539,7 @@ public class Analizador_Lexico {
                         token = new Token(TipoToken.TYPE_NEGACION, (Integer) null);
                         carActual = leer(fr);
                         break;
-                    //TO-DO
+                    //(0-19)
                     case ',':
                         token = new Token(TipoToken.TYPE_COMA, (Integer) null);
                         carActual = leer(fr);
@@ -532,7 +561,7 @@ public class Analizador_Lexico {
         return token;
     }
 
-    
+    //Funcion auxiliar para identificar caracter 
     private int getcharEnum(Character c) {
 
         switch(c){
@@ -571,12 +600,16 @@ public class Analizador_Lexico {
         return -1;
     }
 
+    //Funcion auxiliar para accion semantica leer
     private Character leer(FileReader fr) throws IOException {
+        //Integer en referencia a la tabla ASCII
         int cIntLeido = fr.read();
         columna++;
         if(cIntLeido == -1){
             cIntLeido = 26; //Simulo EOF
-        }else if (cIntLeido == 10 ){
+        }
+        //Si es salto de linea
+        else if (cIntLeido == 10 ){
             columna = 0;
             lineaActual++;
         }

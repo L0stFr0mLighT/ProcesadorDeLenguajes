@@ -16,7 +16,7 @@ public class Procesador {
             Analizador_Lexico lexico = new Analizador_Lexico("C:\\Users\\User\\Downloads\\PIdG81 (7).txt", gestorTs);
 
             Token token;
-            
+            //Proceso tokens hasta que encuentre EOF o null (error)
             do {
                 token = lexico.iniciar();
                 if (token == null) {
