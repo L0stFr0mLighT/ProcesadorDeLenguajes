@@ -35,5 +35,4 @@ public class Token {
     public double getNum() {
         return atrNum;
     }
-
 }

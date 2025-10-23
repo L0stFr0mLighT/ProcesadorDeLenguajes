@@ -338,6 +338,8 @@ public class Analizador_Lexico {
                 if(charEnum == -1){
                     if(estado_actual == 9){
                         accion = 'K'; estado_destino = 9;
+                    }else if(estado_actual == 2 || estado_actual == 3){
+                        accion = 'A'; estado_destino = 2;
                     } else throw new InvalidCaracterErr(lineaActual,columna,estado_actual,Caracteres.values()[charEnum]);
 
                 } else{
