@@ -13,7 +13,7 @@ public class Procesador {
             TablaDeSimbolos tabla = new TablaDeSimbolos(gestorTs);
             tabla.iniciar();
 
-            Analizador_Lexico lexico = new Analizador_Lexico("C:\\Users\\User\\Downloads\\PIdG81 (7).txt", gestorTs);
+            Analizador_Lexico lexico = new Analizador_Lexico("C:\\Users\\User\\Downloads\\PIdG81 (8).txt", gestorTs);
 
             Token token;
             //Proceso tokens hasta que encuentre EOF o null (error)

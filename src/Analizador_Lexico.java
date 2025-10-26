@@ -360,7 +360,7 @@ public class Analizador_Lexico {
                         accion = 'K'; estado_destino = 9;
                     }else if(estado_actual == 2 || estado_actual == 3){
                         accion = 'A'; estado_destino = 2;
-                    } else throw new InvalidCaracterErr(lineaActual,columna,estado_actual,Caracteres.values()[charEnum]);
+                    } else throw new InvalidCaracterErr(lineaActual,columna,estado_actual,carActual);
 
                 } 
                 /*En caso de existir caracter, descomponemos en:
@@ -374,7 +374,7 @@ public class Analizador_Lexico {
                 
                 //Si el caracter leido no es aceptado (transicion inexistente)
                 if (estado_destino == null) {
-                    throw new InvalidCaracterErr(lineaActual,columna,estado_actual,Caracteres.values()[charEnum]);
+                    throw new InvalidCaracterErr(lineaActual,columna,estado_actual, carActual);
                 }
               
                 switch (accion) {
@@ -393,7 +393,7 @@ public class Analizador_Lexico {
                     //Genero Token Entero (4-10)
                     case 'D':
                         //EXCEPTION: entero demasiado grande
-                        if(num >= 32767) throw new IntTooLargeErr(lineaActual,columna,estado_actual,Caracteres.values()[charEnum], (int)num);
+                        if(num >= 32767) throw new IntTooLargeErr(lineaActual,columna,estado_actual, carActual, (int)num);
                         token = new Token(TipoToken.TYPE_ENTERO, (Integer) (int) num);
                         break;
                     //Comienzo contador decimal (4-5)
@@ -412,7 +412,7 @@ public class Analizador_Lexico {
                     case 'G':
                         //EXCEPTION: inexistencia de decimales ó real demasiado grande
                         if(!(countDecimales > 0 && num < 117549436.0))
-                            throw new RealTooLargeErr(lineaActual,columna,estado_actual,Caracteres.values()[charEnum],(double)num, countDecimales); 
+                            throw new RealTooLargeErr(lineaActual,columna,estado_actual, carActual, (double)num, countDecimales); 
                         token = new Token(TipoToken.TYPE_REAL, num + dec / Math.pow(10, countDecimales));
                         break;
                     //Principio de lexema (0-6) (0-7) (0-8)
@@ -440,7 +440,7 @@ public class Analizador_Lexico {
                     //Genero Token ID (8-17)
                     case 'L':
                         //EXCEPTION: id demasiado grande
-                        if (lex.length() >= 64)throw new IdTooLargeErr(lineaActual, columna,estado_actual, Caracteres.values()[charEnum]);
+                        if (lex.length() >= 64)throw new IdTooLargeErr(lineaActual, columna,estado_actual, carActual);
                         //Si no encontramos el identificador 
                         if(gestor.getEntradaTPalabrasReservadas(lex) == 0){
                             if(gestor.getEntradaTSGlobal(lex) == 0){
@@ -475,7 +475,7 @@ public class Analizador_Lexico {
                         break;
                     //Genero Token Cadena (9-18)
                     case 'O':
-                        if(lex.length() >= 64) throw new CadenaTooLargeErr(lineaActual, columna,estado_actual, Caracteres.values()[charEnum],lex, lex.length());
+                        if(lex.length() >= 64) throw new CadenaTooLargeErr(lineaActual, columna,estado_actual, carActual, lex, lex.length());
                         token = new Token(TipoToken.TYPE_CADENA, lex);
                         carActual = leer(fr);
                         break;
