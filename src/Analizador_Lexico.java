@@ -337,7 +337,7 @@ public class Analizador_Lexico {
         double num = 0;
         double dec = 0;
         String lex = "";
-        char accion;
+        Character accion;
         estado_actual = 0;
 
         try{
@@ -360,7 +360,7 @@ public class Analizador_Lexico {
                         accion = 'K'; estado_destino = 9;
                     }else if(estado_actual == 2 || estado_actual == 3){
                         accion = 'A'; estado_destino = 2;
-                    } else throw new InvalidCaracterErr(lineaActual,columna,estado_actual,carActual);
+                    } else throw new InvalidCaracterErr(lineaActual,columna,estado_actual, carActual);
 
                 } 
                 /*En caso de existir caracter, descomponemos en:
@@ -374,7 +374,12 @@ public class Analizador_Lexico {
                 
                 //Si el caracter leido no es aceptado (transicion inexistente)
                 if (estado_destino == null) {
-                    throw new InvalidCaracterErr(lineaActual,columna,estado_actual, carActual);
+                    if(estado_actual == 9){
+                        throw new CadenaNoTerminadaErr(lineaActual, columna, estado_actual, carActual, lex);
+                    } else if(estado_actual == 2 || estado_actual == 3){
+                        throw new ComentarioNoTerminado(lineaActual, columna, estado_actual, carActual);
+                    }
+                    else throw new InvalidCaracterErr(lineaActual,columna,estado_actual, carActual);
                 }
               
                 switch (accion) {

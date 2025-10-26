@@ -12,7 +12,7 @@ public class TablaDeSimbolos {
     public void iniciar(){
         gestorTs.activarDebug();
         gestorTs.createTPalabrasReservadas();
-        gestorTs.createAtributo("dirección", DescripcionAtributo.DIR, TipoDatoAtributo.ENTERO);        
+        gestorTs.createAtributo("dirección", DescripcionAtributo.DIR, TipoDatoAtributo.ENTERO);
         gestorTs.createTSGlobal();
         gestorTs.addEntradaTPalabrasReservadas("let");
         gestorTs.addEntradaTPalabrasReservadas("int");
