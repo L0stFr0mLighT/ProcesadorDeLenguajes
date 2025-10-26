@@ -377,7 +377,7 @@ public class Analizador_Lexico {
                     if(estado_actual == 9){
                         throw new CadenaNoTerminadaErr(lineaActual, columna, estado_actual, carActual, lex);
                     } else if(estado_actual == 2 || estado_actual == 3){
-                        throw new ComentarioNoTerminado(lineaActual, columna, estado_actual, carActual);
+                        throw new ComentarioNoTerminadoErr(lineaActual, columna, estado_actual, carActual);
                     }
                     else throw new InvalidCaracterErr(lineaActual,columna,estado_actual, carActual);
                 }
