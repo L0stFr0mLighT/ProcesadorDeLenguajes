@@ -1,2 +1,4 @@
 /tabladesimbolos.txt
 /tokens.txt
+*.class
+/bin/

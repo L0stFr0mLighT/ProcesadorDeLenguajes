@@ -1,3 +1,5 @@
+import Enumeraciones.TipoToken;
+
 public class Token {
 
     private TipoToken tipo;

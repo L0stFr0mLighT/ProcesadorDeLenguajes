@@ -1,6 +1,8 @@
 import java.io.FileWriter;
 import java.io.IOException;
 
+import Enumeraciones.*;
+import Errores.*;
 import tslib.TS_Gestor;
 import tslib.TS_Gestor.Tabla;
 

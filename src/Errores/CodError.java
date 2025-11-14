@@ -1,3 +1,4 @@
+package Errores;
 public enum CodError{
     CADENA_TOO_LARGE,
     INT_TOO_LARGE,

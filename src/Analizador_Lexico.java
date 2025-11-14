@@ -1,5 +1,7 @@
 import java.io.*;
 
+import Enumeraciones.*;
+import Errores.*;
 import es.upm.aedlib.Pair;
 import es.upm.aedlib.map.*;
 import tslib.TS_Gestor;
