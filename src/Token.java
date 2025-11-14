@@ -37,4 +37,20 @@ public class Token {
     public double getNum() {
         return atrNum;
     }
+
+    @Override
+    public boolean equals(Object obj){
+        if (this == obj)
+            return true;
+        if (obj == null)
+            return false;
+        if (!(obj instanceof Token)) {
+            return false;
+        }
+        Token other = (Token) obj;
+        return this.tipo == other.tipo && 
+                this.atributo == other.atributo && 
+                this.atrLex == other.atrLex &&
+                this.atrNum == other.atrNum;
+    }
 }
