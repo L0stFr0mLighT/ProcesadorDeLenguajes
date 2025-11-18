@@ -1,7 +1,10 @@
 package Errores;
+
+import java.util.List;
+
 public class RealTooLargeErr extends Err {
-    public RealTooLargeErr(int linea, int columna, int estado, Character car, double num, int decimal) {
-        super(linea, columna, estado, TipoError.LEXICO, CodError.REAL_ERROR, car,
-              "Número real demasiado grande o countDecimal == 0 (countDecimal: " + decimal + " && num: " + num + " > 117549436.0)");
+    public RealTooLargeErr(int linea, int columna, double num, List<String> codigoFuente, int longitudErr) {
+        super(linea, columna, TipoError.LEXICO, CodError.REAL_ERROR,
+              "Número real demasiado grande  (num:" + num + " > 117549436.0).", codigoFuente, longitudErr);
     }
 }

@@ -1,0 +1,74 @@
+import es.upm.aedlib.Pair;
+import java.io.FileWriter;
+import java.io.IOException;
+
+//TokenTexto es una clase intermedia para pasarle tokens al sintactico mientras imprimo
+//el token ya en un archivo txt
+public class TokenTexto {
+    
+    private Analizador_Lexico aLex;
+    private FileWriter writer;
+
+    public TokenTexto (Analizador_Lexico aLex, String archivoTokens) throws IOException {
+        this.aLex = aLex;
+        this.writer = new FileWriter(archivoTokens);
+    }
+
+    /**
+     * Devuelve el siguiente token junto con su posición (linea, columna) mientras escribe en 
+     * archivo
+     */
+    public Pair<Token, Pair<Integer, Integer>> nextTokenWithPos() {
+        try {
+            Pair<Token, Pair<Integer, Integer>> par = aLex.iniciar();
+            Token token = par.getLeft();
+            if (token != null) {
+                escribirToken(token); // Escribe en archivo
+            }
+            return par;
+        } catch (IOException e) {
+            e.printStackTrace();
+            return new Pair<>(null, null);
+        }
+    }
+
+    /**
+     * Escritura del token en el archivo (deberia ser igual al que teniamos antes)
+     */
+    private void escribirToken(Token token) throws IOException {
+        if (token == null) return;
+
+        String salida = "<" + token.getTipo().ordinal() + ", ";
+
+        switch (token.getTipo()) {
+            case TYPE_CADENA:
+                salida += "\"" + token.getLex() + "\"";
+                break;
+            case TYPE_REAL:
+                salida += token.getNum();
+                break;
+            case TYPE_ENTERO:
+                salida += (int)token.getNum();
+                break;
+            default:
+                // Si tiene atributo (ej: posición en TS) lo imprime; si no, deja vacío
+                if (token.getAtributo() != null)
+                    salida += token.getAtributo();
+                break;
+        }
+
+        salida += ">\n";
+        writer.write(salida);
+    }
+
+    /**
+     * Cierra el archivo de tokens
+     */
+    public void close() {
+        try {
+            if (writer != null) writer.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+}

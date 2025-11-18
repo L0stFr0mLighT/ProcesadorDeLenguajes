@@ -42,15 +42,21 @@ public class Token {
     public boolean equals(Object obj){
         if (this == obj)
             return true;
-        if (obj == null)
+        if (obj == null || !(obj instanceof Token))
             return false;
-        if (!(obj instanceof Token)) {
-            return false;
-        }
+
         Token other = (Token) obj;
-        return this.tipo == other.tipo && 
-                this.atributo == other.atributo && 
-                this.atrLex == other.atrLex &&
-                this.atrNum == other.atrNum;
+
+    // Compara tipo
+    if (this.tipo != other.tipo)
+        return false;
+
+    // Solo compara atributo si al menos uno lo tiene
+    if (this.atributo != null || other.atributo != null) {
+        return this.atributo != null && this.atributo.equals(other.atributo);
+    }
+
+    return true;
+
     }
 }

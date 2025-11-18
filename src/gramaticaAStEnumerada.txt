@@ -45,7 +45,7 @@ T -> boolean
 T -> string
 INI  -> id = E ;
 INI  -> lambda
-ACTU -> id A E ; 
+ACTU -> id A E //Aqui he quitado el ; porque en un for no necesitamos que termine en ;
 ACTU -> lambda
 C -> S C 
 C -> lambda ////Declaracion de funciones:

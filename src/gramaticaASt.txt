@@ -8,7 +8,7 @@ Axioma = P
 Producciones = {
     P -> S P 
     P -> F P 
-    P -> lambda ////Expresiones:
+    P -> EOF ////Expresiones:
     E -> E1 E_AND
     E_AND   -> && E1 E_AND
     E_AND   -> lambda

@@ -1,95 +1,119 @@
 import Enumeraciones.*;
 import Errores.*;
+import es.upm.aedlib.Pair;
 
-import java.io.FileWriter;
-import java.io.IOException;
-
+import java.util.List;
 
 public class Analizador_Sintactico {
+
     private Token token;
-    private Analizador_Lexico ALex;
+    private TokenTexto tkT;
     private String parse;
     private TipoToken type;
+    private int linea;
+    private int columna;
+    List<String> codigoFuente;
 
-    public Analizador_Sintactico (Analizador_Lexico ALex){
-        this.ALex = ALex;
+    public Analizador_Sintactico (TokenTexto tkT, List<String> codigoFuente){
+        this.tkT = tkT;
         parse = "D ";
+        this.codigoFuente = codigoFuente;
+
     }
 
-    public void iniciar(){
-        try {
-            token = ALex.iniciar();
-            type = token.getTipo();
-            P();
-            if (token.getTipo() != TipoToken.TYPE_EOF){
-                //TO-DO ERROR
-            }
+    //Funcion auxiliar para pedir el siguiente token
+    private void nextToken (){
+        //Pair<Token, Pair<nLinea,nColumna>>
+        Pair<Token, Pair <Integer, Integer>> par = tkT.nextTokenWithPos();
+        token = par.getLeft();
+        type = token.getTipo();
+        linea = par.getRight().getLeft();
+        columna = par.getRight().getRight();
 
-        } catch (Exception e) {
-        
+    }
+
+    public String iniciar(){
+
+        //No hagp try-catch de errores para asi parar en el primer error 
+        //que me salga imprimiendo mensaje
+        nextToken();
+        P();
+
+        if (token.getTipo() != TipoToken.TYPE_EOF){
+            throw new Token_Inesperado(linea, columna, "P",token.getTipo(),"EOF", codigoFuente, token.getLex());
         }
 
+        return parse;
+
     }
 
+    //Funcion auxiliar para comprobar si el terminal leido es correcto 
     private void equipara (Token t){
-        try{
+            //En ID,INT,FLOAT,STRING imponemos una restriccion mas suave (no miramos su atributo)
             if (TipoToken.TYPE_IDENTIFICADOR == t.getTipo() || 
                 TipoToken.TYPE_ENTERO == t.getTipo() || 
                 TipoToken.TYPE_REAL == t.getTipo() ||
                 TipoToken.TYPE_CADENA == t.getTipo() ||
-                token.equals(t)) {
-                    token = ALex.iniciar();
-                    type = token.getTipo();
-                } 
-            else;//ERROR TERMINAL INESPERADO
-        }catch(Exception e){
+                token.equals(t)) nextToken();
+                
+            else {
+                //Terminal_Inesperado gestiona internamente el mensaje a imprimir segun si atributo == null
+                if (t.getAtributo() != null) 
+                    throw new Terminal_Inesperado(linea, columna, token.getTipo(),token.getAtributo(),t.getTipo(),t.getAtributo(), codigoFuente, token.getLex());
+            }
 
-        }
     }
 
+    //AXIOMA
     private void P() {
         //1. P -> S P 
         if (type == TipoToken.TYPE_IDENTIFICADOR || type == TipoToken.TYPE_WRITE ||
         type == TipoToken.TYPE_READ || type == TipoToken.TYPE_RETURN ||
         type == TipoToken.TYPE_LET || type == TipoToken.TYPE_IF || type == TipoToken.TYPE_FOR){
-            parse.concat("1 "); 
-            S(); P();        
+            parse = parse.concat("1 "); 
+            S(); 
+            P();        
         } //2. P -> F P 
         else if(type == TipoToken.TYPE_FUNCTION) {
-            parse.concat("2 ");
-            F(); P();
-        } //3. P -> lambda
+            parse = parse.concat("2 ");
+            F(); 
+            P();
+        } //3. P -> EOF
         else if (type == TipoToken.TYPE_EOF) {
-            parse.concat("3 ");
+            parse = parse.concat("3 ");
             equipara(new Token(TipoToken.TYPE_EOF, (Integer) null));
-        } else; //ERROR TOKEN INESPERADO
+        } else throw new Token_Inesperado(linea, columna, "P",token.getTipo(),"EOF", codigoFuente, token.getLex());
+
     }
 
     private void S(){
         //23. S -> S_SIMPLE
         if(type == TipoToken.TYPE_IDENTIFICADOR || type == TipoToken.TYPE_WRITE ||
             type == TipoToken.TYPE_READ || type == TipoToken.TYPE_RETURN){
-                parse.concat("23 ");
+                parse = parse.concat("23 ");
                 S_SIMPLE();
         } //24. S -> S_COMPUESTA
         else if(type == TipoToken.TYPE_LET || type == TipoToken.TYPE_IF || type == TipoToken.TYPE_FOR){
-                parse.concat("24 ");
+                parse = parse.concat("24 ");
                 S_COMPUESTA();
-        } else; //ERROR TOKEN INESPERADO
+        } else throw new Token_Inesperado(linea, columna, "S",token.getTipo()
+        ,"ID, WRITE, READ, RETURN, LET, IF, FOR", codigoFuente, token.getLex());
+    
     }
     
     private void F() {
         //52. F -> function H id ( B ) { C }
-        parse.concat("52 ");
+        parse = parse.concat("52 ");
         equipara(new Token(TipoToken.TYPE_FUNCTION, (Integer) null));
         H();
         equipara(new Token (TipoToken.TYPE_IDENTIFICADOR, (Integer) null));
-        equipara(new Token (TipoToken.TYPE_PARENTESIS, 0));
+        equipara(new Token (TipoToken.TYPE_PARENTESIS, (Integer)0));
         B();
-        equipara(new Token (TipoToken.TYPE_PARENTESIS, 1));
-        equipara(new Token (TipoToken.TYPE_LLAVE, 0));
+        equipara(new Token (TipoToken.TYPE_PARENTESIS,(Integer) 1));
+        equipara(new Token (TipoToken.TYPE_LLAVE, (Integer)0));
         C();
-        equipara(new Token (TipoToken.TYPE_LLAVE, 1));
+        equipara(new Token (TipoToken.TYPE_LLAVE, (Integer)1));
+
     }
     
     private void E() {
@@ -97,27 +121,29 @@ public class Analizador_Sintactico {
         if(type == TipoToken.TYPE_NEGACION || type == TipoToken.TYPE_IDENTIFICADOR ||
             type == TipoToken.TYPE_PARENTESIS || type == TipoToken.TYPE_CADENA ||
             type == TipoToken.TYPE_ENTERO || type == TipoToken.TYPE_REAL){
-                parse.concat("4 ");
+                parse = parse.concat("4 ");
                 E1();
                 E_AND();
         }
-        else; //ERROR TOKEN INESPERADO
+        else throw new Token_Inesperado(linea, columna, "E",token.getTipo()
+        ,"NEGACION, ID, PARENTESIS, CADENA, ENTERO, REAL", codigoFuente, token.getLex());
     }
 
     private void E_AND(){
         //5. E_AND -> && E1 E_AND
         if(type == TipoToken.TYPE_AND){
-            parse.concat("5 ");
+            parse = parse.concat("5 ");
             equipara(new Token (TipoToken.TYPE_AND, (Integer) null));
             E1();
             E_AND();
         }
-        //6. E_AND -> lambda
-        else if (type == TipoToken.TYPE_EOF){
-            parse.concat("6 ");
-            equipara(new Token(TipoToken.TYPE_EOF, (Integer) null));
+        //6. E_AND -> lambda | FOLLOW(E_AND) = { ")", ",", ";" }
+        else if (type == TipoToken.TYPE_PUNTO_Y_COMA || type == TipoToken.TYPE_PARENTESIS ||
+                type == TipoToken.TYPE_COMA){
+            parse = parse.concat("6 ");
         }
-        else; //ERROR TOKEN INESPERADO
+        else throw new Token_Inesperado(linea, columna, "E_AND",token.getTipo()
+        ,"AND, PUNTO_Y_COMA, PARENTESIS, COMA", codigoFuente, token.getLex());
     }
     
     private void E1(){
@@ -125,11 +151,12 @@ public class Analizador_Sintactico {
         if(type == TipoToken.TYPE_NEGACION || type == TipoToken.TYPE_IDENTIFICADOR ||
             type == TipoToken.TYPE_PARENTESIS || type == TipoToken.TYPE_CADENA ||
             type == TipoToken.TYPE_ENTERO || type == TipoToken.TYPE_REAL){
-            parse.concat("7 ");
+            parse = parse.concat("7 ");
             E2();
             E1_REL();
         }
-        else; //ERROR TOKEN INESPERADO
+        else throw new Token_Inesperado(linea, columna, "E1",token.getTipo()
+        ,"NEGACION, ID, PARENTESIS, CADENA, ENTERO, REAL", codigoFuente, token.getLex());
     }
     
     private void E1_REL(){
@@ -145,12 +172,13 @@ public class Analizador_Sintactico {
             E2();
             E1_REL();
         }
-        //10. E1_REL  -> lambda
-        else if (type == TipoToken.TYPE_EOF){
-            parse.concat("10 ");
-            equipara(new Token(TipoToken.TYPE_EOF, (Integer) null));
+        //10. E1_REL  -> lambda | FOLLOW(E1_REL) = { "&&", ")", ",", ";" }
+        else if (type == TipoToken.TYPE_AND || type == TipoToken.TYPE_PARENTESIS ||
+                type == TipoToken.TYPE_COMA || type == TipoToken.TYPE_PUNTO_Y_COMA){
+            parse = parse.concat("10 ");
         }
-        else; //ERROR TOKEN INESPERADO
+        else throw new Token_Inesperado(linea, columna, "E1_REL",token.getTipo()
+        ,">, <, AND, ) , COMA, PUNTO_Y_COMA", codigoFuente, token.getLex());
     }
     
     private void E2(){
@@ -158,11 +186,12 @@ public class Analizador_Sintactico {
         if(type == TipoToken.TYPE_NEGACION || type == TipoToken.TYPE_IDENTIFICADOR ||
             type == TipoToken.TYPE_PARENTESIS || type == TipoToken.TYPE_CADENA ||
             type == TipoToken.TYPE_ENTERO || type == TipoToken.TYPE_REAL){
-            parse.concat("11 ");
+            parse = parse.concat("11 ");
             E3();
             E2_ARIT();
         }
-        else; //ERROR TOKEN INESPERADO
+        else throw new Token_Inesperado(linea, columna, "E2",token.getTipo()
+        ,"NEGACION, ID, PARENTESIS, CADENA, ENTERO, REAL", codigoFuente, token.getLex());
     }
     
     private void E2_ARIT(){
@@ -178,12 +207,14 @@ public class Analizador_Sintactico {
             E3();
             E2_ARIT();
         }
-        //14. E2_ARIT -> lambda
-        else if (type == TipoToken.TYPE_EOF){
-            parse.concat("14 ");
-            equipara(new Token(TipoToken.TYPE_EOF, (Integer) null));
+        //14. E2_ARIT -> lambda | FOLLOW(E2_ARIT) = { ">", "<", "&&", ")", ",", ";" }
+        else if (type == TipoToken.TYPE_AND || type == TipoToken.TYPE_PARENTESIS ||
+                type == TipoToken.TYPE_COMA || type == TipoToken.TYPE_PUNTO_Y_COMA ||
+                type == TipoToken.TYPE_RELACION){
+            parse = parse.concat("14 ");
         }
-        else; //ERROR TOKEN INESPERADO
+        else throw new Token_Inesperado(linea, columna, "E2_ARIT",token.getTipo()
+        ,"ARITMETICO, AND, PARENTESIS, COMA, PUNTO_Y_COMA, RELACION", codigoFuente, token.getLex());
 
     }
     
@@ -216,7 +247,8 @@ public class Analizador_Sintactico {
         else if (type == TipoToken.TYPE_REAL){
             equipara(new Token(TipoToken.TYPE_REAL,(Integer)null));
         }
-        else; //ERROR TOKEN INESPERADO
+        else throw new Token_Inesperado(linea, columna, "E3",token.getTipo()
+        ,"NEGACION, ID, PARENTESIS, CADENA, ENTERO, REAL", codigoFuente, token.getLex());
 
     }
 
@@ -227,47 +259,51 @@ public class Analizador_Sintactico {
             L();
             equipara(new Token(TipoToken.TYPE_PARENTESIS,(Integer)1));
         }
-        //22. E4  -> lambda
-        else if (type == TipoToken.TYPE_EOF){
-            parse.concat("14 ");
-            equipara(new Token(TipoToken.TYPE_EOF, (Integer) null));
+        //22. E4  -> lambda | FOLLOW(E4) = { "+", "-", ">", "<", "&&", ")", ",", ";" }
+        else if (type == TipoToken.TYPE_AND || token.equals(new Token(TipoToken.TYPE_PARENTESIS,(Integer) 1)) ||
+                type == TipoToken.TYPE_COMA || type == TipoToken.TYPE_PUNTO_Y_COMA ||
+                type == TipoToken.TYPE_RELACION || type == TipoToken.TYPE_ARITMETICO){
+            parse = parse.concat("22 ");
         }
-        else; //ERROR TOKEN INESPERADO
+        else throw new Token_Inesperado(linea, columna, "E4",token.getTipo()
+        ,"PARENTESIS, AND, COMA, PUNTO_Y_COMA, RELACION, ARITMETICO", codigoFuente, token.getLex());
 
     }
     
     private void S_SIMPLE(){
         //25. S_SIMPLE -> id ASIGFUN
         if(type == TipoToken.TYPE_IDENTIFICADOR){
-            parse.concat("25 ");
+            parse = parse.concat("25 ");
             equipara(new Token(TipoToken.TYPE_IDENTIFICADOR, (Integer) null));
+            //System.out.println("DEBUG token: tipo=" + token.getTipo() + " atributo=" + token.getAtributo());
             ASIGFUN();
         } //26. S_SIMPLE -> write E ;
-        else if(type == TipoToken.TYPE_READ){
-            parse.concat("26 ");
+        else if(type == TipoToken.TYPE_WRITE){
+            parse = parse.concat("26 ");
             equipara(new Token(TipoToken.TYPE_WRITE, (Integer) null));
-            equipara(new Token(TipoToken.TYPE_PUNTO_Y_COMA, (Integer) null));
             E();
+            equipara(new Token(TipoToken.TYPE_PUNTO_Y_COMA, (Integer) null));
         } //27. S_SIMPLE -> read id ;
         else if(type == TipoToken.TYPE_READ){
-            parse.concat("27 ");
+            parse = parse.concat("27 ");
             equipara(new Token(TipoToken.TYPE_READ, (Integer) null));
             equipara(new Token(TipoToken.TYPE_IDENTIFICADOR, (Integer) null));
             equipara(new Token(TipoToken.TYPE_PUNTO_Y_COMA, (Integer) null));
         } //28. S_SIMPLE -> return X ;
         else if(type == TipoToken.TYPE_RETURN){
-            parse.concat("28 ");
+            parse = parse.concat("28 ");
             equipara(new Token(TipoToken.TYPE_RETURN, (Integer) null));
             X();
             equipara(new Token(TipoToken.TYPE_PUNTO_Y_COMA, (Integer) null));
-        } else; //ERROR TOKEN INESPERADO
+        } else throw new Token_Inesperado(linea, columna, "S_SIMPLE",token.getTipo()
+        ,"ID, WRITE, READ, RETURN", codigoFuente, token.getLex());
 
     }  
     
     private void S_COMPUESTA(){
         //39. S_COMPUESTA -> let T id ;
         if(type == TipoToken.TYPE_LET){
-            parse.concat("39 ");
+            parse = parse.concat("39 ");
             equipara(new Token(TipoToken.TYPE_LET, (Integer) null));
             T();
             equipara(new Token(TipoToken.TYPE_IDENTIFICADOR, (Integer) null));
@@ -275,61 +311,65 @@ public class Analizador_Sintactico {
         }
         //40. S_COMPUESTA -> if ( E ) S
         else if(type == TipoToken.TYPE_IF){
-            parse.concat("40 ");
+            parse = parse.concat("40 ");
             equipara(new Token(TipoToken.TYPE_IF, (Integer) null));
-            equipara(new Token(TipoToken.TYPE_PARENTESIS, 0));
+            equipara(new Token(TipoToken.TYPE_PARENTESIS, (Integer)0));
             E();
-            equipara(new Token(TipoToken.TYPE_PARENTESIS, 1));
+            equipara(new Token(TipoToken.TYPE_PARENTESIS,(Integer) 1));
             S();
         }
         //41. S_COMPUESTA -> for ( INI ; E ; ACTU ) { C }
         else if(type == TipoToken.TYPE_FOR){
-            parse.concat("41 ");
+            parse = parse.concat("41 ");
             equipara(new Token(TipoToken.TYPE_FOR, (Integer) null));
-            equipara(new Token(TipoToken.TYPE_PARENTESIS, 0));
+            equipara(new Token(TipoToken.TYPE_PARENTESIS, (Integer)0));
             INI();
             equipara(new Token(TipoToken.TYPE_PUNTO_Y_COMA, (Integer) null));
             E();
             equipara(new Token(TipoToken.TYPE_PUNTO_Y_COMA, (Integer) null));
             ACTU();
-            equipara(new Token(TipoToken.TYPE_PARENTESIS, 1));
-            equipara(new Token(TipoToken.TYPE_LLAVE, 0));
+            equipara(new Token(TipoToken.TYPE_PARENTESIS,(Integer) 1));
+            equipara(new Token(TipoToken.TYPE_LLAVE, (Integer)0));
             C();
-            equipara(new Token(TipoToken.TYPE_LLAVE, 1));
-        } else; //ERROR TOKEN INESPERADO
+            equipara(new Token(TipoToken.TYPE_LLAVE, (Integer)1));
+        } else throw new Token_Inesperado(linea, columna, "S_COMPUESTA",token.getTipo()
+        ,"LET, IF, FOR", codigoFuente, token.getLex());
 
     }
     
     private void ASIGFUN(){
         //29. ASIGFUN  -> A E ;
-        if(token.equals(new Token(TipoToken.TYPE_ASIGNACION, 0)) || 
-        token.equals(new Token(TipoToken.TYPE_ASIGNACION, 1))) {
-            parse.concat("29 ");
+        // System.out.println("DEBUG ASIGFUN comparando con = " + token.equals(new Token(TipoToken.TYPE_ASIGNACION, 0)));
+        // System.out.println("DEBUG ASIGFUN comparando con |= " + token.equals(new Token(TipoToken.TYPE_ASIGNACION, 1)));
+        if(token.getTipo() == TipoToken.TYPE_ASIGNACION) {
+            parse = parse.concat("29 ");
             A();
             E();
             equipara(new Token(TipoToken.TYPE_PUNTO_Y_COMA, (Integer) null));
         }
         //30. ASIGFUN  -> ( L ) ;
-        else if(type == TipoToken.TYPE_PARENTESIS && token.getAtributo() == 0){
-            parse.concat("30 ");
-            equipara(new Token(TipoToken.TYPE_PARENTESIS, 0));
+        else if(token.equals(new Token(TipoToken.TYPE_PARENTESIS, (Integer)0))){
+            parse = parse.concat("30 ");
+            equipara(new Token(TipoToken.TYPE_PARENTESIS, (Integer)0));
             L();
-            equipara(new Token(TipoToken.TYPE_PARENTESIS, 1));
+            equipara(new Token(TipoToken.TYPE_PARENTESIS, (Integer)1));
             equipara(new Token(TipoToken.TYPE_PUNTO_Y_COMA, (Integer) null));
-        } else; //ERROR TOKEN INESPERADO
+        } else throw new Token_Inesperado(linea, columna, "ASIGFUN",token.getTipo()
+        ,"ASIGNACION, PARENTESIS", codigoFuente, token.getLex());
 
     }
     
     private void A(){
         //31. A -> =
-        if(token.equals(new Token(TipoToken.TYPE_ASIGNACION, 0))){
-            parse.concat("31 ");
-            equipara(new Token(TipoToken.TYPE_ASIGNACION, 0));
+        if(token.equals(new Token(TipoToken.TYPE_ASIGNACION, (Integer) 0))){
+            parse = parse.concat("31 ");
+            equipara(new Token(TipoToken.TYPE_ASIGNACION, (Integer) 0));
         } //32. A -> |=
-        else if(token.equals(new Token(TipoToken.TYPE_ASIGNACION, 1))){
-            parse.concat("32 ");
-            equipara(new Token(TipoToken.TYPE_ASIGNACION, 1));
-        } else; //ERROR TOKEN INESPERADO
+        else if(token.equals(new Token(TipoToken.TYPE_ASIGNACION, (Integer) 1))){
+            parse = parse.concat("32 ");
+            equipara(new Token(TipoToken.TYPE_ASIGNACION, (Integer) 1));
+        } else throw new Token_Inesperado(linea, columna, "A",token.getTipo()
+        ,"ASGINACION", codigoFuente, token.getLex());
 
     }
 
@@ -338,29 +378,29 @@ public class Analizador_Sintactico {
         if(type == TipoToken.TYPE_NEGACION || type == TipoToken.TYPE_IDENTIFICADOR ||
             type == TipoToken.TYPE_PARENTESIS || type == TipoToken.TYPE_CADENA ||
             type == TipoToken.TYPE_ENTERO || type == TipoToken.TYPE_REAL){
-                parse.concat("33 ");
+                parse = parse.concat("33 ");
                 E();
                 Q();
-        } //34. L -> lambda
-        else if (type == TipoToken.TYPE_EOF){
-            parse.concat("34 ");
-            equipara(new Token(TipoToken.TYPE_EOF, (Integer) null));
-        } else; //ERROR TOKEN INESPERADO
+        } //34. L -> lambda FOLLOW(L) = {")"}
+        else if (type == TipoToken.TYPE_PARENTESIS){
+            parse = parse.concat("34 ");
+        } else throw new Token_Inesperado(linea, columna, "L",token.getTipo()
+        ,"NEGACION, ID, PARENTESIS, CADENA, ENTERO, REAL", codigoFuente, token.getLex());
 
     }
 
     private void Q(){
         //35. Q -> , E Q
         if(type == TipoToken.TYPE_COMA){
-            parse.concat("35 ");
+            parse = parse.concat("35 ");
             equipara(new Token(TipoToken.TYPE_COMA, (Integer) null));
             E();
             Q();
-        } //36. Q -> lambda
-        else if (type == TipoToken.TYPE_EOF){
-            parse.concat("36 ");
-            equipara(new Token(TipoToken.TYPE_EOF, (Integer) null));
-        } else; //ERROR TOKEN INESPERADO
+        } //36. Q -> lambda FOLLOW(Q) = {")"}
+        else if (type == TipoToken.TYPE_PARENTESIS){
+            parse = parse.concat("36 ");
+        } else throw new Token_Inesperado(linea, columna, "Q",token.getTipo()
+        ,"COMA, PARENTESIS", codigoFuente, token.getLex());
 
     }
     
@@ -369,126 +409,134 @@ public class Analizador_Sintactico {
         if(type == TipoToken.TYPE_NEGACION || type == TipoToken.TYPE_IDENTIFICADOR ||
             type == TipoToken.TYPE_PARENTESIS || type == TipoToken.TYPE_CADENA ||
             type == TipoToken.TYPE_ENTERO || type == TipoToken.TYPE_REAL){
-                parse.concat("37 ");
+                parse = parse.concat("37 ");
                 E();
-        } //38. X -> lambda
-        else if (type == TipoToken.TYPE_EOF){
-            parse.concat("38 ");
-            equipara(new Token(TipoToken.TYPE_EOF, (Integer) null));
-        } else; //ERROR TOKEN INESPERADO
+        } //38. X -> lambda FOLLOW(X) = {";"}
+        else if (type == TipoToken.TYPE_PUNTO_Y_COMA){
+            parse = parse.concat("38 ");
+        } else throw new Token_Inesperado(linea, columna, "X",token.getTipo()
+        ,"NEGACION, ID, PARENTESIS, CADENA, ENTERO, REAL, PUNTO_Y_COMA", codigoFuente, token.getLex());
     }
     
     private void T(){
         //42. T -> int
         if(type == TipoToken.TYPE_INT){
-            parse.concat("42 ");
+            parse = parse.concat("42 ");
             equipara(new Token(TipoToken.TYPE_INT, (Integer) null));
         } //43. T -> float
         else if(type == TipoToken.TYPE_FLOAT){
-            parse.concat("43 ");
+            parse = parse.concat("43 ");
             equipara(new Token(TipoToken.TYPE_FLOAT, (Integer) null));
         } //44. T -> boolean
         else if(type == TipoToken.TYPE_BOOLEAN){
-            parse.concat("44 ");
+            parse = parse.concat("44 ");
             equipara(new Token(TipoToken.TYPE_BOOLEAN, (Integer) null));
         } //45. T -> string
         else if(type == TipoToken.TYPE_STRING){
-            parse.concat("45 ");
+            parse = parse.concat("45 ");
             equipara(new Token(TipoToken.TYPE_STRING, (Integer) null));
         }
-        else; //ERROR TOKEN INESPERADO
+        else throw new Token_Inesperado(linea, columna, "T",token.getTipo()
+        ,"INT, FLOAT, BOOLEAN, STRING", codigoFuente, token.getLex());
     }
     
     private void INI(){
         //46. INI ->  id = E ;
         if(type == TipoToken.TYPE_IDENTIFICADOR){
-            parse.concat("46 ");
+            parse = parse.concat("46 ");
             equipara(new Token(TipoToken.TYPE_IDENTIFICADOR, (Integer) null));
-            equipara(new Token(TipoToken.TYPE_ASIGNACION, 0));
+            equipara(new Token(TipoToken.TYPE_ASIGNACION, (Integer) 0));
             E();
             equipara(new Token(TipoToken.TYPE_PUNTO_Y_COMA, (Integer) null));
-        } //47. INI -> lambda
-        else if (type == TipoToken.TYPE_EOF){
-            parse.concat("47 ");
-            equipara(new Token(TipoToken.TYPE_EOF, (Integer) null));
+        } //47. INI -> lambda FOLLOW(INI) = {";"}
+        else if (type == TipoToken.TYPE_PUNTO_Y_COMA){
+            parse = parse.concat("47 ");
         }
-        else; //ERROR TOKEN INESPERADO
+        else throw new Token_Inesperado(linea, columna, "INI",token.getTipo()
+        ,"ID, PUNTO_Y_COMA", codigoFuente, token.getLex());
     }
     
     private void ACTU(){
-        //48. ACTU -> id A = E ;
+        //48. ACTU -> id A E ;
         if(type == TipoToken.TYPE_IDENTIFICADOR){
-            parse.concat("49 ");
+            parse = parse.concat("49 ");
             equipara(new Token(TipoToken.TYPE_IDENTIFICADOR, (Integer) null));
             A();
-            equipara(new Token(TipoToken.TYPE_ASIGNACION, 0));
             E();
-            equipara(new Token(TipoToken.TYPE_PUNTO_Y_COMA, (Integer) null));
-        } //49. ACTU -> lambda
-        else if (type == TipoToken.TYPE_EOF){
-            parse.concat("51 ");
-            equipara(new Token(TipoToken.TYPE_EOF, (Integer) null));
+        } //49. ACTU -> lambda FOLLOW(ACTU) = {")"}
+        else if (type == TipoToken.TYPE_PARENTESIS){
+            parse = parse.concat("51 ");
         }
-        else; //ERROR TOKEN INESPERADO
+        else throw new Token_Inesperado(linea, columna, "ACTU",token.getTipo()
+        ,"ID, PARENTESIS", codigoFuente, token.getLex());
     }
     
     private void C(){
         //50. C -> S C
-        if(type == TipoToken.TYPE_IDENTIFICADOR || type == TipoToken.TYPE_WRITE ||
+        //Aqui aplico un while porque puede que AsigFun no consuma bien el token
+        /*
+         *Ejemplo de fallo si uso if y S();C();
+         * let float num;
+         * num = 123234.;
+         */
+        while(type == TipoToken.TYPE_IDENTIFICADOR || type == TipoToken.TYPE_WRITE ||
         type == TipoToken.TYPE_READ || type == TipoToken.TYPE_RETURN ||
         type == TipoToken.TYPE_LET || type == TipoToken.TYPE_IF || type == TipoToken.TYPE_FOR){
-            parse.concat("50 ");
-            S(); C();
-        } //51. C -> lambda
-        else if (type == TipoToken.TYPE_EOF){
-            parse.concat("51 ");
-            equipara(new Token(TipoToken.TYPE_EOF, (Integer) null));
+            parse = parse.concat("50 ");
+            S();
+        } //51. C -> lambda FOLLOW(C) = {"}"}
+        if (type == TipoToken.TYPE_LLAVE){
+            parse = parse.concat("51 ");
         }
-        else; //ERROR TOKEN INESPERADO
+        else throw new Token_Inesperado(linea, columna, "C",token.getTipo()
+        ,"ID, WRITE, READ, RETURN, LET, IF, FOR, LLAVE", codigoFuente, token.getLex());
     }
     
     private void H(){
         //53. H -> T
         if(type == TipoToken.TYPE_INT || type == TipoToken.TYPE_FLOAT ||
         type == TipoToken.TYPE_BOOLEAN || type == TipoToken.TYPE_STRING){
-            parse.concat("53 ");
-            equipara(new Token(TipoToken.TYPE_INT, (Integer) null));
+            parse = parse.concat("53 ");
+            equipara(new Token(type, (Integer) null));
         } //54. H -> void
         else if(type == TipoToken.TYPE_VOID){
-            parse.concat("54 ");
+            parse = parse.concat("54 ");
             equipara(new Token(TipoToken.TYPE_VOID, (Integer) null));
-        } else; //ERROR TOKEN INESPERADO
+        } 
+        else throw new Token_Inesperado(linea, columna, "H",token.getTipo()
+        ,"INT, FLOAT, BOOLEAN, STRING, VOID", codigoFuente, token.getLex());
     }
 
     private void B(){
         //55. B -> T id K
         if(type == TipoToken.TYPE_INT || type == TipoToken.TYPE_FLOAT ||
         type == TipoToken.TYPE_BOOLEAN || type == TipoToken.TYPE_STRING){
-            parse.concat("55 ");
+            parse = parse.concat("55 ");
             T();
             equipara(new Token(TipoToken.TYPE_IDENTIFICADOR, (Integer) null));
             K();
         } //56. B -> void
         else if (type == TipoToken.TYPE_VOID){
-            parse.concat("56 ");
+            parse = parse.concat("56 ");
             equipara(new Token(TipoToken.TYPE_VOID, (Integer) null));
         }
-        else; //ERROR TOKEN INESPERADO
+        else throw new Token_Inesperado(linea, columna, "B",token.getTipo()
+        ,"INT, FLOAT, BOOLEAN, STRING, VOID", codigoFuente, token.getLex());
     }
 
     private void K(){
         //57. K -> , T id K
         if(type == TipoToken.TYPE_COMA){
-            parse.concat("57 ");
+            parse = parse.concat("57 ");
             equipara(new Token(TipoToken.TYPE_COMA, (Integer) null));
             T();
             equipara(new Token(TipoToken.TYPE_IDENTIFICADOR, (Integer) null));
             K();
-        } //58. K -> lambda
-        else if (type == TipoToken.TYPE_EOF){
-            parse.concat("58 ");
-            equipara(new Token(TipoToken.TYPE_EOF, (Integer) null));
+        } //58. K -> lambda FOLLOW(K) = {")"}
+        else if (type == TipoToken.TYPE_PARENTESIS){
+            parse = parse.concat("58 ");
         }
-        else; //ERROR TOKEN INESPERADO
+        else throw new Token_Inesperado(linea, columna, "K",token.getTipo()
+        ,"COMA, PARENTESIS", codigoFuente, token.getLex());
     }
-}
+} 

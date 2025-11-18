@@ -1,10 +1,16 @@
 package Errores;
 public enum CodError{
+    //Analizador lexico
     CADENA_TOO_LARGE,
     INT_TOO_LARGE,
     ID_TOO_LARGE,
     REAL_ERROR,
     INVALID_CARACTER,
     CADENA_NO_TERMINADA,
-    COMENTARIO_NO_TERMINADO
+    COMENTARIO_NO_TERMINADO,
+    FALTA_DECIMAL,
+
+    //Analizador Sintactico
+    TERMINAL_INESPERADO,
+    TOKEN_INESPERADO
 }
