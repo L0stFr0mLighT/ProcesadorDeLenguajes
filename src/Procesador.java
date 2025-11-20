@@ -14,7 +14,7 @@ public class Procesador {
         try {
             
             //Ruta al archivo a leer
-            String ruta = "C:\\Users\\User\\OneDrive\\Escritorio\\Pdl\\Pruebas\\C2.txt";
+            String ruta = "C:\\Users\\User\\OneDrive\\Escritorio\\Pdl\\Pruebas\\C3.txt";
 
             //Guardo en una lista de String el codigo a analizar para su uso en los errores
             List<String> codigoFuente = Files.readAllLines(Paths.get(ruta));

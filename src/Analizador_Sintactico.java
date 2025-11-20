@@ -162,12 +162,14 @@ public class Analizador_Sintactico {
     private void E1_REL(){
         //8. E1_REL  -> > E2 E1_REL
         if (token.equals(new Token(TipoToken.TYPE_RELACION,(Integer)0))){
+            parse = parse.concat("8 ");
             equipara(new Token (TipoToken.TYPE_RELACION,(Integer)0));
             E2();
             E1_REL();
         }
         //9. E1_REL  -> < E2 E1_REL
         else if (token.equals(new Token(TipoToken.TYPE_RELACION,(Integer)1))){
+            parse = parse.concat("9 ");
             equipara(new Token (TipoToken.TYPE_RELACION,(Integer)1));
             E2();
             E1_REL();
@@ -197,12 +199,14 @@ public class Analizador_Sintactico {
     private void E2_ARIT(){
         //12. E2_ARIT -> + E3 E2_ARIT
         if (token.equals(new Token(TipoToken.TYPE_ARITMETICO,(Integer)0))){
+            parse = parse.concat("12 ");
             equipara(new Token (TipoToken.TYPE_ARITMETICO,(Integer)0));
             E3();
             E2_ARIT();
         }
         //13. E2_ARIT -> - E3 E2_ARIT
         else if (token.equals(new Token(TipoToken.TYPE_ARITMETICO,(Integer)1))){
+            parse = parse.concat("13 ");
             equipara(new Token (TipoToken.TYPE_ARITMETICO,(Integer)1));
             E3();
             E2_ARIT();
@@ -221,30 +225,36 @@ public class Analizador_Sintactico {
     private void E3(){
         //15. E3  -> ! E3 
         if (type == TipoToken.TYPE_NEGACION){
+            parse = parse.concat("15 ");
             equipara(new Token(TipoToken.TYPE_NEGACION,(Integer)null));
             E3();
         }
         //16. E3  -> id E4
         else if (type == TipoToken.TYPE_IDENTIFICADOR){
+            parse = parse.concat("16 ");
             equipara(new Token(TipoToken.TYPE_IDENTIFICADOR, (Integer) null));
             E4();
         }
         //17. E3  -> ( E )
         else if (token.equals(new Token(TipoToken.TYPE_PARENTESIS,(Integer)0))){
+            parse = parse.concat("17 ");
             equipara(new Token(TipoToken.TYPE_PARENTESIS,(Integer)0));
             E();
             equipara(new Token(TipoToken.TYPE_PARENTESIS,(Integer)1));
         }
         //18. E3  -> cadena
         else if (type == TipoToken.TYPE_CADENA){
+            parse = parse.concat("18 ");
             equipara(new Token(TipoToken.TYPE_CADENA,(Integer)null));
         }
         //19. E3  -> entero
         else if (type == TipoToken.TYPE_ENTERO){
+            parse = parse.concat("19 ");
             equipara(new Token(TipoToken.TYPE_ENTERO,(Integer)null));
         }
         //20. E3  -> real 
         else if (type == TipoToken.TYPE_REAL){
+            parse = parse.concat("20 ");
             equipara(new Token(TipoToken.TYPE_REAL,(Integer)null));
         }
         else throw new Token_Inesperado(linea, columna, "E3",token.getTipo()
@@ -255,6 +265,7 @@ public class Analizador_Sintactico {
     private void E4(){
         //21. E4  -> ( L )
         if (token.equals(new Token(TipoToken.TYPE_PARENTESIS,(Integer)0))){
+            parse = parse.concat("21 ");
             equipara(new Token(TipoToken.TYPE_PARENTESIS,(Integer)0));
             L();
             equipara(new Token(TipoToken.TYPE_PARENTESIS,(Integer)1));
@@ -382,7 +393,7 @@ public class Analizador_Sintactico {
                 E();
                 Q();
         } //34. L -> lambda FOLLOW(L) = {")"}
-        else if (type == TipoToken.TYPE_PARENTESIS){
+        else if (token.equals(new Token(TipoToken.TYPE_PARENTESIS, (Integer) 1))){
             parse = parse.concat("34 ");
         } else throw new Token_Inesperado(linea, columna, "L",token.getTipo()
         ,"NEGACION, ID, PARENTESIS, CADENA, ENTERO, REAL", codigoFuente, token.getLex());
@@ -397,7 +408,7 @@ public class Analizador_Sintactico {
             E();
             Q();
         } //36. Q -> lambda FOLLOW(Q) = {")"}
-        else if (type == TipoToken.TYPE_PARENTESIS){
+        else if (token.equals(new Token(TipoToken.TYPE_PARENTESIS, (Integer) 1))){
             parse = parse.concat("36 ");
         } else throw new Token_Inesperado(linea, columna, "Q",token.getTipo()
         ,"COMA, PARENTESIS", codigoFuente, token.getLex());
@@ -459,13 +470,13 @@ public class Analizador_Sintactico {
     private void ACTU(){
         //48. ACTU -> id A E ;
         if(type == TipoToken.TYPE_IDENTIFICADOR){
-            parse = parse.concat("49 ");
+            parse = parse.concat("48 ");
             equipara(new Token(TipoToken.TYPE_IDENTIFICADOR, (Integer) null));
             A();
             E();
         } //49. ACTU -> lambda FOLLOW(ACTU) = {")"}
-        else if (type == TipoToken.TYPE_PARENTESIS){
-            parse = parse.concat("51 ");
+        else if (token.equals(new Token(TipoToken.TYPE_PARENTESIS, (Integer) 1))){
+            parse = parse.concat("49 ");
         }
         else throw new Token_Inesperado(linea, columna, "ACTU",token.getTipo()
         ,"ID, PARENTESIS", codigoFuente, token.getLex());
@@ -473,19 +484,14 @@ public class Analizador_Sintactico {
     
     private void C(){
         //50. C -> S C
-        //Aqui aplico un while porque puede que AsigFun no consuma bien el token
-        /*
-         *Ejemplo de fallo si uso if y S();C();
-         * let float num;
-         * num = 123234.;
-         */
-        while(type == TipoToken.TYPE_IDENTIFICADOR || type == TipoToken.TYPE_WRITE ||
+        if(type == TipoToken.TYPE_IDENTIFICADOR || type == TipoToken.TYPE_WRITE ||
         type == TipoToken.TYPE_READ || type == TipoToken.TYPE_RETURN ||
         type == TipoToken.TYPE_LET || type == TipoToken.TYPE_IF || type == TipoToken.TYPE_FOR){
             parse = parse.concat("50 ");
             S();
+            C();
         } //51. C -> lambda FOLLOW(C) = {"}"}
-        if (type == TipoToken.TYPE_LLAVE){
+        else if (token.equals(new Token(TipoToken.TYPE_LLAVE, (Integer) 1))){
             parse = parse.concat("51 ");
         }
         else throw new Token_Inesperado(linea, columna, "C",token.getTipo()
@@ -497,7 +503,7 @@ public class Analizador_Sintactico {
         if(type == TipoToken.TYPE_INT || type == TipoToken.TYPE_FLOAT ||
         type == TipoToken.TYPE_BOOLEAN || type == TipoToken.TYPE_STRING){
             parse = parse.concat("53 ");
-            equipara(new Token(type, (Integer) null));
+            T();
         } //54. H -> void
         else if(type == TipoToken.TYPE_VOID){
             parse = parse.concat("54 ");
@@ -533,7 +539,7 @@ public class Analizador_Sintactico {
             equipara(new Token(TipoToken.TYPE_IDENTIFICADOR, (Integer) null));
             K();
         } //58. K -> lambda FOLLOW(K) = {")"}
-        else if (type == TipoToken.TYPE_PARENTESIS){
+        else if (token.equals(new Token(TipoToken.TYPE_PARENTESIS, (Integer) 1))){
             parse = parse.concat("58 ");
         }
         else throw new Token_Inesperado(linea, columna, "K",token.getTipo()
