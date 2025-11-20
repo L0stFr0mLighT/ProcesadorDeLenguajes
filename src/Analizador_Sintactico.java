@@ -257,9 +257,12 @@ public class Analizador_Sintactico {
             parse = parse.concat("20 ");
             equipara(new Token(TipoToken.TYPE_REAL,(Integer)null));
         }
-        else throw new Token_Inesperado(linea, columna, "E3",token.getTipo()
-        ,"NEGACION, ID, PARENTESIS, CADENA, ENTERO, REAL", codigoFuente, token.getLex());
+        else{
+            System.out.println("DEBUG E3 token tipo=" + token.getTipo() + " atributo=" + token.getAtributo());
+            throw new Token_Inesperado(linea, columna, "E3",token.getTipo()
+            ,"NEGACION, ID, PARENTESIS, CADENA, ENTERO, REAL", codigoFuente, token.getLex());
 
+        } 
     }
 
     private void E4(){
@@ -387,8 +390,8 @@ public class Analizador_Sintactico {
     private void L(){
         //33. L -> E Q
         if(type == TipoToken.TYPE_NEGACION || type == TipoToken.TYPE_IDENTIFICADOR ||
-            type == TipoToken.TYPE_PARENTESIS || type == TipoToken.TYPE_CADENA ||
-            type == TipoToken.TYPE_ENTERO || type == TipoToken.TYPE_REAL){
+            type == TipoToken.TYPE_CADENA || type == TipoToken.TYPE_ENTERO || type == TipoToken.TYPE_REAL ||
+            token.equals(new Token(TipoToken.TYPE_PARENTESIS, (Integer) 0))){
                 parse = parse.concat("33 ");
                 E();
                 Q();
