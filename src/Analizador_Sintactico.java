@@ -12,6 +12,11 @@ public class Analizador_Sintactico {
     private TipoToken type;
     private int linea;
     private int columna;
+    private int lineaAnterior;
+    private int columnaAnterior;
+    private int lineaS;
+    private int columnaS;
+
     List<String> codigoFuente;
 
     public Analizador_Sintactico (TokenTexto tkT, List<String> codigoFuente){
@@ -25,6 +30,8 @@ public class Analizador_Sintactico {
     private void nextToken (){
         //Pair<Token, Pair<nLinea,nColumna>>
         Pair<Token, Pair <Integer, Integer>> par = tkT.nextTokenWithPos();
+        lineaAnterior = linea;
+        columnaAnterior = columna;
         token = par.getLeft();
         type = token.getTipo();
         linea = par.getRight().getLeft();
@@ -40,7 +47,7 @@ public class Analizador_Sintactico {
         P();
 
         if (token.getTipo() != TipoToken.TYPE_EOF){
-            throw new Token_Inesperado(linea, columna, "P",token.getTipo(),"EOF", codigoFuente, token.getLex());
+            throw new Token_Inesperado(lineaAnterior, columnaAnterior,linea, columna,lineaS, columnaS, "P",token.getTipo(),"EOF", codigoFuente, token.getLex());
         }
 
         return parse;
@@ -58,8 +65,7 @@ public class Analizador_Sintactico {
                 
             else {
                 //Terminal_Inesperado gestiona internamente el mensaje a imprimir segun si atributo == null
-                if (t.getAtributo() != null) 
-                    throw new Terminal_Inesperado(linea, columna, token.getTipo(),token.getAtributo(),t.getTipo(),t.getAtributo(), codigoFuente, token.getLex());
+                throw new Terminal_Inesperado(lineaAnterior, columnaAnterior, linea, columna,lineaS, columnaS,token.getTipo(),token.getAtributo(),t.getTipo(),t.getAtributo(), codigoFuente, token.getLex());
             }
 
     }
@@ -82,12 +88,14 @@ public class Analizador_Sintactico {
         else if (type == TipoToken.TYPE_EOF) {
             parse = parse.concat("3 ");
             equipara(new Token(TipoToken.TYPE_EOF, (Integer) null));
-        } else throw new Token_Inesperado(linea, columna, "P",token.getTipo(),"EOF", codigoFuente, token.getLex());
+        } else throw new Token_Inesperado(lineaAnterior, columnaAnterior,linea, columna,lineaS, columnaS, "Procesando sentencias y funciones (P)",token.getTipo(),"EOF", codigoFuente, token.getLex());
 
     }
 
     private void S(){
         //23. S -> S_SIMPLE
+        lineaS = linea;
+        columnaS = columna;
         if(type == TipoToken.TYPE_IDENTIFICADOR || type == TipoToken.TYPE_WRITE ||
             type == TipoToken.TYPE_READ || type == TipoToken.TYPE_RETURN){
                 parse = parse.concat("23 ");
@@ -96,7 +104,7 @@ public class Analizador_Sintactico {
         else if(type == TipoToken.TYPE_LET || type == TipoToken.TYPE_IF || type == TipoToken.TYPE_FOR){
                 parse = parse.concat("24 ");
                 S_COMPUESTA();
-        } else throw new Token_Inesperado(linea, columna, "S",token.getTipo()
+        } else throw new Token_Inesperado(lineaAnterior, columnaAnterior,linea, columna,lineaS, columnaS, "Analizando una sentencia (S)",token.getTipo()
         ,"ID, WRITE, READ, RETURN, LET, IF, FOR", codigoFuente, token.getLex());
     
     }
@@ -125,7 +133,7 @@ public class Analizador_Sintactico {
                 E1();
                 E_AND();
         }
-        else throw new Token_Inesperado(linea, columna, "E",token.getTipo()
+        else throw new Token_Inesperado(lineaAnterior, columnaAnterior,linea, columna,lineaS, columnaS, "Evaluando una expresión (E)",token.getTipo()
         ,"NEGACION, ID, PARENTESIS, CADENA, ENTERO, REAL", codigoFuente, token.getLex());
     }
 
@@ -142,7 +150,7 @@ public class Analizador_Sintactico {
                 type == TipoToken.TYPE_COMA){
             parse = parse.concat("6 ");
         }
-        else throw new Token_Inesperado(linea, columna, "E_AND",token.getTipo()
+        else throw new Token_Inesperado(lineaAnterior, columnaAnterior,linea, columna,lineaS, columnaS, "Evaluando operador lógico && (E_AND)",token.getTipo()
         ,"AND, PUNTO_Y_COMA, PARENTESIS, COMA", codigoFuente, token.getLex());
     }
     
@@ -155,7 +163,7 @@ public class Analizador_Sintactico {
             E2();
             E1_REL();
         }
-        else throw new Token_Inesperado(linea, columna, "E1",token.getTipo()
+        else throw new Token_Inesperado(lineaAnterior, columnaAnterior,linea, columna,lineaS, columnaS, "Evaluando una expresión relacional (E1)",token.getTipo()
         ,"NEGACION, ID, PARENTESIS, CADENA, ENTERO, REAL", codigoFuente, token.getLex());
     }
     
@@ -179,7 +187,7 @@ public class Analizador_Sintactico {
                 type == TipoToken.TYPE_COMA || type == TipoToken.TYPE_PUNTO_Y_COMA){
             parse = parse.concat("10 ");
         }
-        else throw new Token_Inesperado(linea, columna, "E1_REL",token.getTipo()
+        else throw new Token_Inesperado(lineaAnterior, columnaAnterior,linea, columna,lineaS, columnaS, "Evaluando comparaciones (> o <)(E1_REL)",token.getTipo()
         ,">, <, AND, ) , COMA, PUNTO_Y_COMA", codigoFuente, token.getLex());
     }
     
@@ -192,7 +200,7 @@ public class Analizador_Sintactico {
             E3();
             E2_ARIT();
         }
-        else throw new Token_Inesperado(linea, columna, "E2",token.getTipo()
+        else throw new Token_Inesperado(lineaAnterior, columnaAnterior,linea, columna,lineaS, columnaS, "Evaluando una expresión aritmética (E2)",token.getTipo()
         ,"NEGACION, ID, PARENTESIS, CADENA, ENTERO, REAL", codigoFuente, token.getLex());
     }
     
@@ -217,7 +225,7 @@ public class Analizador_Sintactico {
                 type == TipoToken.TYPE_RELACION){
             parse = parse.concat("14 ");
         }
-        else throw new Token_Inesperado(linea, columna, "E2_ARIT",token.getTipo()
+        else throw new Token_Inesperado(lineaAnterior, columnaAnterior,linea, columna,lineaS, columnaS, "Evaluando sumas/restas (+ o -) (E2_ARIT)",token.getTipo()
         ,"ARITMETICO, AND, PARENTESIS, COMA, PUNTO_Y_COMA, RELACION", codigoFuente, token.getLex());
 
     }
@@ -259,7 +267,7 @@ public class Analizador_Sintactico {
         }
         else{
             System.out.println("DEBUG E3 token tipo=" + token.getTipo() + " atributo=" + token.getAtributo());
-            throw new Token_Inesperado(linea, columna, "E3",token.getTipo()
+            throw new Token_Inesperado(lineaAnterior, columnaAnterior,linea, columna,lineaS, columnaS, "Evaluando un operando o identificador (E3)",token.getTipo()
             ,"NEGACION, ID, PARENTESIS, CADENA, ENTERO, REAL", codigoFuente, token.getLex());
 
         } 
@@ -279,7 +287,7 @@ public class Analizador_Sintactico {
                 type == TipoToken.TYPE_RELACION || type == TipoToken.TYPE_ARITMETICO){
             parse = parse.concat("22 ");
         }
-        else throw new Token_Inesperado(linea, columna, "E4",token.getTipo()
+        else throw new Token_Inesperado(lineaAnterior, columnaAnterior,linea, columna,lineaS, columnaS, "Evaluando una llamada a funcion (E4)",token.getTipo()
         ,"PARENTESIS, AND, COMA, PUNTO_Y_COMA, RELACION, ARITMETICO", codigoFuente, token.getLex());
 
     }
@@ -309,7 +317,7 @@ public class Analizador_Sintactico {
             equipara(new Token(TipoToken.TYPE_RETURN, (Integer) null));
             X();
             equipara(new Token(TipoToken.TYPE_PUNTO_Y_COMA, (Integer) null));
-        } else throw new Token_Inesperado(linea, columna, "S_SIMPLE",token.getTipo()
+        } else throw new Token_Inesperado(lineaAnterior, columnaAnterior,linea, columna,lineaS, columnaS, "Analizando una sentencia simple (S_SIMPLE)",token.getTipo()
         ,"ID, WRITE, READ, RETURN", codigoFuente, token.getLex());
 
     }  
@@ -346,7 +354,7 @@ public class Analizador_Sintactico {
             equipara(new Token(TipoToken.TYPE_LLAVE, (Integer)0));
             C();
             equipara(new Token(TipoToken.TYPE_LLAVE, (Integer)1));
-        } else throw new Token_Inesperado(linea, columna, "S_COMPUESTA",token.getTipo()
+        } else throw new Token_Inesperado(lineaAnterior, columnaAnterior,linea, columna,lineaS, columnaS, "Analizando una sentencia compuesta (S_COMPUESTA)",token.getTipo()
         ,"LET, IF, FOR", codigoFuente, token.getLex());
 
     }
@@ -368,7 +376,7 @@ public class Analizador_Sintactico {
             L();
             equipara(new Token(TipoToken.TYPE_PARENTESIS, (Integer)1));
             equipara(new Token(TipoToken.TYPE_PUNTO_Y_COMA, (Integer) null));
-        } else throw new Token_Inesperado(linea, columna, "ASIGFUN",token.getTipo()
+        } else throw new Token_Inesperado(lineaAnterior, columnaAnterior,linea, columna,lineaS, columnaS, "Analizando una asignación o llamada a función (ASIGFUN)",token.getTipo()
         ,"ASIGNACION, PARENTESIS", codigoFuente, token.getLex());
 
     }
@@ -382,7 +390,7 @@ public class Analizador_Sintactico {
         else if(token.equals(new Token(TipoToken.TYPE_ASIGNACION, (Integer) 1))){
             parse = parse.concat("32 ");
             equipara(new Token(TipoToken.TYPE_ASIGNACION, (Integer) 1));
-        } else throw new Token_Inesperado(linea, columna, "A",token.getTipo()
+        } else throw new Token_Inesperado(lineaAnterior, columnaAnterior,linea, columna,lineaS, columnaS, "Leyendo el operador de asignación (= o |=) (A)",token.getTipo()
         ,"ASGINACION", codigoFuente, token.getLex());
 
     }
@@ -398,7 +406,7 @@ public class Analizador_Sintactico {
         } //34. L -> lambda FOLLOW(L) = {")"}
         else if (token.equals(new Token(TipoToken.TYPE_PARENTESIS, (Integer) 1))){
             parse = parse.concat("34 ");
-        } else throw new Token_Inesperado(linea, columna, "L",token.getTipo()
+        } else throw new Token_Inesperado(lineaAnterior, columnaAnterior,linea, columna,lineaS, columnaS, "Leyendo lista de argumentos (L)",token.getTipo()
         ,"NEGACION, ID, PARENTESIS, CADENA, ENTERO, REAL", codigoFuente, token.getLex());
 
     }
@@ -413,7 +421,7 @@ public class Analizador_Sintactico {
         } //36. Q -> lambda FOLLOW(Q) = {")"}
         else if (token.equals(new Token(TipoToken.TYPE_PARENTESIS, (Integer) 1))){
             parse = parse.concat("36 ");
-        } else throw new Token_Inesperado(linea, columna, "Q",token.getTipo()
+        } else throw new Token_Inesperado(lineaAnterior, columnaAnterior,linea, columna,lineaS, columnaS, "Leyendo argumentos adicionales separados por comas (Q)",token.getTipo()
         ,"COMA, PARENTESIS", codigoFuente, token.getLex());
 
     }
@@ -428,7 +436,7 @@ public class Analizador_Sintactico {
         } //38. X -> lambda FOLLOW(X) = {";"}
         else if (type == TipoToken.TYPE_PUNTO_Y_COMA){
             parse = parse.concat("38 ");
-        } else throw new Token_Inesperado(linea, columna, "X",token.getTipo()
+        } else throw new Token_Inesperado(lineaAnterior, columnaAnterior,linea, columna,lineaS, columnaS, "Procesando expresión (puede ser lambda) en return (X)",token.getTipo()
         ,"NEGACION, ID, PARENTESIS, CADENA, ENTERO, REAL, PUNTO_Y_COMA", codigoFuente, token.getLex());
     }
     
@@ -450,7 +458,7 @@ public class Analizador_Sintactico {
             parse = parse.concat("45 ");
             equipara(new Token(TipoToken.TYPE_STRING, (Integer) null));
         }
-        else throw new Token_Inesperado(linea, columna, "T",token.getTipo()
+        else throw new Token_Inesperado(lineaAnterior, columnaAnterior,linea, columna,lineaS, columnaS, "Leyendo tipo de dato (int, float, boolean, string) (T)",token.getTipo()
         ,"INT, FLOAT, BOOLEAN, STRING", codigoFuente, token.getLex());
     }
     
@@ -466,7 +474,7 @@ public class Analizador_Sintactico {
         else if (type == TipoToken.TYPE_PUNTO_Y_COMA){
             parse = parse.concat("47 ");
         }
-        else throw new Token_Inesperado(linea, columna, "INI",token.getTipo()
+        else throw new Token_Inesperado(lineaAnterior, columnaAnterior,linea, columna,lineaS, columnaS, "Leyendo inicialización del bucle for (INI)",token.getTipo()
         ,"ID, PUNTO_Y_COMA", codigoFuente, token.getLex());
     }
     
@@ -481,7 +489,7 @@ public class Analizador_Sintactico {
         else if (token.equals(new Token(TipoToken.TYPE_PARENTESIS, (Integer) 1))){
             parse = parse.concat("49 ");
         }
-        else throw new Token_Inesperado(linea, columna, "ACTU",token.getTipo()
+        else throw new Token_Inesperado(lineaAnterior, columnaAnterior,linea, columna,lineaS, columnaS, "Leyendo actualización del bucle for (ACTU)",token.getTipo()
         ,"ID, PARENTESIS", codigoFuente, token.getLex());
     }
     
@@ -497,7 +505,7 @@ public class Analizador_Sintactico {
         else if (token.equals(new Token(TipoToken.TYPE_LLAVE, (Integer) 1))){
             parse = parse.concat("51 ");
         }
-        else throw new Token_Inesperado(linea, columna, "C",token.getTipo()
+        else throw new Token_Inesperado(lineaAnterior, columnaAnterior,linea, columna,lineaS, columnaS, "Procesando el cuerpo de un bloque { … } (C)",token.getTipo()
         ,"ID, WRITE, READ, RETURN, LET, IF, FOR, LLAVE", codigoFuente, token.getLex());
     }
     
@@ -512,7 +520,7 @@ public class Analizador_Sintactico {
             parse = parse.concat("54 ");
             equipara(new Token(TipoToken.TYPE_VOID, (Integer) null));
         } 
-        else throw new Token_Inesperado(linea, columna, "H",token.getTipo()
+        else throw new Token_Inesperado(lineaAnterior, columnaAnterior,linea, columna,lineaS, columnaS, "Leyendo el tipo de retorno de una función (H)",token.getTipo()
         ,"INT, FLOAT, BOOLEAN, STRING, VOID", codigoFuente, token.getLex());
     }
 
@@ -529,7 +537,7 @@ public class Analizador_Sintactico {
             parse = parse.concat("56 ");
             equipara(new Token(TipoToken.TYPE_VOID, (Integer) null));
         }
-        else throw new Token_Inesperado(linea, columna, "B",token.getTipo()
+        else throw new Token_Inesperado(lineaAnterior, columnaAnterior,linea, columna,lineaS, columnaS, "Leyendo parámetros de función (B)",token.getTipo()
         ,"INT, FLOAT, BOOLEAN, STRING, VOID", codigoFuente, token.getLex());
     }
 
@@ -545,7 +553,7 @@ public class Analizador_Sintactico {
         else if (token.equals(new Token(TipoToken.TYPE_PARENTESIS, (Integer) 1))){
             parse = parse.concat("58 ");
         }
-        else throw new Token_Inesperado(linea, columna, "K",token.getTipo()
+        else throw new Token_Inesperado(lineaAnterior, columnaAnterior,linea, columna,lineaS, columnaS, "Leyendo parámetros adicionales de funcion (K)",token.getTipo()
         ,"COMA, PARENTESIS", codigoFuente, token.getLex());
     }
 } 

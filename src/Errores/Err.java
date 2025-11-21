@@ -4,34 +4,44 @@ import java.util.List;
 
 public abstract class Err extends RuntimeException {
 
-    public Err(int linea, int columna, TipoError tipoError, CodError codError, String descrip, List<String> codigoFuente, int longitudErr) {
+    public Err(int lineaAntigua, int columnaAntigua, int lineaSiguiente,int columnaSiguiente, int lineaS, int columnaS, TipoError tipoError, CodError codError, String descrip, List<String> codigoFuente, int longitudErr) {
         
-        super(constructorMensaje(linea, columna, tipoError, codError, descrip, codigoFuente, longitudErr));
+        super(constructorMensaje(lineaAntigua, columnaAntigua,lineaSiguiente, columnaSiguiente, lineaS, columnaS, tipoError, codError, descrip, codigoFuente, longitudErr));
         
     }
 
-    private static String constructorMensaje (int linea, int columna, TipoError tipoError, CodError codError, String descrip, List<String> codigoFuente, int longitudErr){
+    private static String constructorMensaje (int lineaAntigua, int columnaAntigua, int lineaSiguiente, int columnaSiguiente, int lineaS, int columnaS, TipoError tipoError, CodError codError, String descrip, List<String> codigoFuente, int longitudErr){
         
         String mensaje = "\n------ ERROR " + tipoError + " ------\n";
-        mensaje += "(" + linea + "," + columna + ") " + codError + ": ";
+        mensaje += "(" + lineaAntigua + "," + columnaAntigua + ") " + codError + ": ";
         mensaje += descrip + "\n";
+        mensaje += "\nCONTEXTO DEL ERROR:\n";
+        // Asegurar rangos válidos
+        int inicio = Math.max(1, lineaS);
+        int fin = Math.min(codigoFuente.size(), lineaSiguiente);  
 
-        //Mostrar la línea exacta con el error
-        //Miramos que no sea vacio el archivo y tampoco linea sea mayor que lo que tengamos en codigoFuente (esto no deberia dispararse nunca)
-        if (codigoFuente != null && linea-1 < codigoFuente.size()) {
-            String lineaError = codigoFuente.get(linea-1);
-            mensaje += "-> ";
-            mensaje += lineaError + "\n";
+        // Imprimir todas las líneas desde S hasta Siguiente (Contexto del error)
+        for (int linea = inicio; linea <= fin; linea++) {
 
-            //Marcar la columna del error con ^
-            //Primero imprimimos espacios hasta la columna
-            for (int i = 1; i < columna+3; i++) mensaje += " "; 
-            //Ahora apuntamos al error
-            for (int i = 0; i < longitudErr; i++) mensaje += "^";
+            String texto = codigoFuente.get(linea - 1);
 
-            mensaje += "\n";
+            //Imprimimos linea de forma: " xx| texto" (Espero que no haya más de 99 líneas :) )
+            mensaje += String.format("%2d| %s%n", linea, texto); //%n para nueva línea (es sinonimo de \n)
+
+            // Línea con el error = marcar ^
+            if (linea == lineaAntigua) {
+
+                mensaje += "    "; // espacio alineado con el margen "xx| "
+
+                // Espacios hasta la columna donde ocurrió el error
+                for (int i = 1; i < columnaAntigua; i++) mensaje += " ";
+
+                // Marcar el error
+                for (int i = 0; i < longitudErr; i++) mensaje += "^";
+
+                mensaje += "\n";
+            }
         }
-
         mensaje += "--------------------------\n";
         return mensaje;
     }  

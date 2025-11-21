@@ -6,15 +6,15 @@ import Enumeraciones.TipoToken;
 
 public class Token_Inesperado extends Err{
     
-    public Token_Inesperado (int linea, int columna, String contexto, 
+    public Token_Inesperado (int lineaAnterior, int columnaAnterior,int lineaSiguiente, int columnaSiguiente, int lineaS, int columnaS, String contexto, 
      TipoToken encontrado, String esperado, List<String> codigoFuente, String lexTk){
-        super(linea, columna,TipoError.SINTACTICO,CodError.TOKEN_INESPERADO,
+        super(lineaAnterior, columnaAnterior,lineaSiguiente,columnaSiguiente,lineaS, columnaS,TipoError.SINTACTICO,CodError.TOKEN_INESPERADO,
         ConstructorMensaje(contexto, encontrado, esperado), codigoFuente, longtitudErr(lexTk));
     }
     
     //Contructor para el mensaje a pasar como descrip
     private static String ConstructorMensaje (String contexto, TipoToken encontrado, String esperado){
-        return "Contexto: " + contexto + " | Encontrado: "+ encontrado + 
+        return contexto + "\nEncontrado: "+ encontrado + 
             "\nEsperado: "+esperado + ".";
     }
 

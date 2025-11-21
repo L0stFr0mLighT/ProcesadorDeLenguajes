@@ -6,10 +6,10 @@ import Enumeraciones.TipoToken;
 
 public class Terminal_Inesperado extends Err {
     
-    public Terminal_Inesperado(int linea, int columna, TipoToken tipoTokenIntro, int atriTokenIntro,
+    public Terminal_Inesperado(int lineaAntigua, int columnaAntigua, int lineaSiguiente, int columnaSiguiente, int lineaS, int columnaS, TipoToken tipoTokenIntro, int atriTokenIntro,
         TipoToken tipoTokenEsp, int atriTokenEsp, List<String> codigoFuente, String lexTk){
-        super(linea, columna, TipoError.SINTACTICO, CodError.TERMINAL_INESPERADO, 
-        ConstructorMensaje(linea, columna, tipoTokenIntro, atriTokenIntro, tipoTokenEsp, atriTokenEsp), codigoFuente, longtitudErr(lexTk));
+        super(lineaAntigua, columnaAntigua, lineaSiguiente, columnaSiguiente, lineaS, columnaS, TipoError.SINTACTICO, CodError.TERMINAL_INESPERADO, 
+        ConstructorMensaje(lineaSiguiente, columnaSiguiente, tipoTokenIntro, atriTokenIntro, tipoTokenEsp, atriTokenEsp), codigoFuente, longtitudErr(lexTk));
     }
     
     //Contructor para el mensaje a pasar como descrip
