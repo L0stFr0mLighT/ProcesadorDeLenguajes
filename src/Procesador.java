@@ -1,9 +1,9 @@
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 
-import Enumeraciones.*;
 import Errores.*;
 import tslib.TS_Gestor;
 import tslib.TS_Gestor.Tabla;
@@ -17,7 +17,7 @@ public class Procesador {
             String ruta = "C:\\Users\\User\\OneDrive\\Escritorio\\Pdl\\Pruebas\\IC1.txt";
 
             //Guardo en una lista de String el codigo a analizar para su uso en los errores
-            List<String> codigoFuente = Files.readAllLines(Paths.get(ruta));
+            List<String> codigoFuente = Files.readAllLines(Paths.get(ruta), StandardCharsets.ISO_8859_1);
             TS_Gestor gestorTs = new TS_Gestor("tabladesimbolos.txt");
             TablaDeSimbolos tabla = new TablaDeSimbolos(gestorTs);
             tabla.iniciar();
