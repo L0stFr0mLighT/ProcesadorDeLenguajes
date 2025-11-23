@@ -15,7 +15,7 @@ public class Token_Inesperado extends Err{
     //Contructor para el mensaje a pasar como descrip
     private static String ConstructorMensaje (String contexto, TipoToken encontrado, String esperado){
         return contexto + "\nEncontrado: "+ encontrado + 
-            "\nEsperado: "+esperado + ".";
+            "\nEsperado: "+esperado;
     }
 
     private static int longtitudErr(String lexTk){

@@ -57,17 +57,19 @@ public class Analizador_Sintactico {
     //Funcion auxiliar para comprobar si el terminal leido es correcto 
     private void equipara (Token t){
             //En ID,INT,FLOAT,STRING imponemos una restriccion mas suave (no miramos su atributo)
-            if (TipoToken.TYPE_IDENTIFICADOR == t.getTipo() || 
-                TipoToken.TYPE_ENTERO == t.getTipo() || 
-                TipoToken.TYPE_REAL == t.getTipo() ||
-                TipoToken.TYPE_CADENA == t.getTipo() ||
-                token.equals(t)) nextToken();
+            if (token.getTipo() == TipoToken.TYPE_IDENTIFICADOR && TipoToken.TYPE_IDENTIFICADOR == t.getTipo() || 
+                token.getTipo() == TipoToken.TYPE_ENTERO && TipoToken.TYPE_ENTERO == t.getTipo() || 
+                token.getTipo() == TipoToken.TYPE_REAL && TipoToken.TYPE_REAL == t.getTipo() ||
+                token.getTipo() == TipoToken.TYPE_CADENA && TipoToken.TYPE_CADENA == t.getTipo() ||
+                token.equals(t)) 
+
+                nextToken();
                 
             else {
                 //Terminal_Inesperado gestiona internamente el mensaje a imprimir segun si atributo == null
-                throw new Terminal_Inesperado(lineaAnterior, columnaAnterior, linea, columna,lineaSF, columnaSF,token.getTipo(),token.getAtributo(),t.getTipo(),t.getAtributo(), codigoFuente, token.getLex());
+                // throw new Terminal_Inesperado(lineaAnterior, columnaAnterior, linea, columna,lineaSF, columnaSF, token.getTipo(),token.getAtributo(),t.getTipo(),t.getAtributo(), codigoFuente, token.getLex());
+                throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, columna, lineaSF, columnaSF, "Equiparando", token.getTipo(), t.getTipo().toString(), codigoFuente, token.getLex());
             }
-
     }
 
     //AXIOMA
@@ -77,8 +79,8 @@ public class Analizador_Sintactico {
         type == TipoToken.TYPE_READ || type == TipoToken.TYPE_RETURN ||
         type == TipoToken.TYPE_LET || type == TipoToken.TYPE_IF || type == TipoToken.TYPE_FOR){
             parse = parse.concat("1 "); 
-            S(); 
-            P();        
+            S();
+            P();
         } //2. P -> F P 
         else if(type == TipoToken.TYPE_FUNCTION) {
             parse = parse.concat("2 ");
@@ -91,7 +93,6 @@ public class Analizador_Sintactico {
         } else throw new Token_Inesperado(lineaAnterior, columnaAnterior,linea, columna,lineaSF, columnaSF, 
             "Se esperaba una sentencia, una declaración de función o el fin del archivo (P)",token.getTipo(),
             "ID, WRITE, READ, RETURN, LET, IF, FOR, FUNCTION, EOF", codigoFuente, token.getLex());
-
     }
 
     private void S(){
@@ -557,7 +558,7 @@ public class Analizador_Sintactico {
         else if (token.equals(new Token(TipoToken.TYPE_PARENTESIS, (Integer) 1))){
             parse = parse.concat("58 ");
         }
-        else throw new Token_Inesperado(lineaAnterior, columnaAnterior,linea, columna,lineaSF, columnaSF, "Se esperaba un argumento después de la coma en los parámetros (K)",token.getTipo()
+        else throw new Token_Inesperado(lineaAnterior, columnaAnterior,linea, columna,lineaSF, columnaSF, "Error en los parametros de la funcion (K)",token.getTipo()
         ,"COMA, PARENTESIS", codigoFuente, token.getLex());
     }
 } 

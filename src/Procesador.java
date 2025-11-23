@@ -14,7 +14,7 @@ public class Procesador {
         try {
             
             //Ruta al archivo a leer
-            String ruta = "C:\\Users\\User\\Downloads\\PIdG81 (11).txt";
+            String ruta = "C:\\Users\\User\\Downloads\\Prueba.txt";
 
             //Guardo en una lista de String el codigo a analizar para su uso en los errores
             List<String> codigoFuente = Files.readAllLines(Paths.get(ruta), StandardCharsets.ISO_8859_1);

@@ -6,8 +6,8 @@ import Enumeraciones.TipoToken;
 
 public class Terminal_Inesperado extends Err {
     
-    public Terminal_Inesperado(int lineaAntigua, int columnaAntigua, int lineaSiguiente, int columnaSiguiente, int lineaS, int columnaS, TipoToken tipoTokenIntro, int atriTokenIntro,
-        TipoToken tipoTokenEsp, int atriTokenEsp, List<String> codigoFuente, String lexTk){
+    public Terminal_Inesperado(int lineaAntigua, int columnaAntigua, int lineaSiguiente, int columnaSiguiente, int lineaS, int columnaS, TipoToken tipoTokenIntro, Integer atriTokenIntro,
+        TipoToken tipoTokenEsp, Integer atriTokenEsp, List<String> codigoFuente, String lexTk){
         super(lineaAntigua, columnaAntigua, lineaSiguiente, columnaSiguiente, lineaS, columnaS, TipoError.SINTACTICO, CodError.TERMINAL_INESPERADO, 
         ConstructorMensaje(lineaSiguiente, columnaSiguiente, tipoTokenIntro, atriTokenIntro, tipoTokenEsp, atriTokenEsp), codigoFuente, longtitudErr(lexTk));
     }
