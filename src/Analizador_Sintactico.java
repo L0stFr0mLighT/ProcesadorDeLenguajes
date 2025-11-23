@@ -36,7 +36,6 @@ public class Analizador_Sintactico {
         type = token.getTipo();
         linea = par.getRight().getLeft();
         columna = par.getRight().getRight();
-
     }
 
     public String iniciar(){
@@ -468,13 +467,12 @@ public class Analizador_Sintactico {
     }
     
     private void INI(){
-        //46. INI ->  id = E ;
+        //46. INI ->  id = E
         if(type == TipoToken.TYPE_IDENTIFICADOR){
             parse = parse.concat("46 ");
             equipara(new Token(TipoToken.TYPE_IDENTIFICADOR, (Integer) null));
             equipara(new Token(TipoToken.TYPE_ASIGNACION, (Integer) 0));
             E();
-            equipara(new Token(TipoToken.TYPE_PUNTO_Y_COMA, (Integer) null));
         } //47. INI -> lambda FOLLOW(INI) = {";"}
         else if (type == TipoToken.TYPE_PUNTO_Y_COMA){
             parse = parse.concat("47 ");

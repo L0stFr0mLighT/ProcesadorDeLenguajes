@@ -51,7 +51,7 @@ Producciones = {
     T -> float
     T -> boolean
     T -> string
-    INI  -> id = E ;
+    INI  -> id = E
     INI  -> lambda
     ACTU -> id A E ; 
     ACTU -> lambda
