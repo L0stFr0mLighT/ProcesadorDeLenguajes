@@ -29,12 +29,12 @@ public abstract class Err extends RuntimeException {
             mensaje += String.format("%2d| %s%n", linea, texto); //%n para nueva línea (es sinonimo de \n)
 
             // Línea con el error = marcar ^
-            if (linea == lineaAntigua) {
+            if (linea == lineaSiguiente) {
 
                 mensaje += "    "; // espacio alineado con el margen "xx| "
 
                 // Espacios hasta la columna donde ocurrió el error
-                for (int i = 1; i < columnaAntigua; i++) mensaje += " ";
+                for (int i = 1; i < columnaSiguiente-1; i++) mensaje += " ";
 
                 // Marcar el error
                 for (int i = 0; i < longitudErr; i++) mensaje += "^";

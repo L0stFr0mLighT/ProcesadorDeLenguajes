@@ -48,9 +48,7 @@ public class Analizador_Sintactico {
         if (token.getTipo() != TipoToken.TYPE_EOF){
             throw new Token_Inesperado(lineaAnterior, columnaAnterior,linea, columna,lineaSF, columnaSF, "P",token.getTipo(),"EOF", codigoFuente, token.getLex());
         }
-
         return parse;
-
     }
 
     //Funcion auxiliar para comprobar si el terminal leido es correcto 
