@@ -6,6 +6,7 @@ NoTerminales = { P E E_AND E1 E1_REL E2 E2_ARIT E3 E4 S S_SIMPLE S_COMPUESTA ASI
 Axioma = P
 
 Producciones = {
+    I -> P
     P -> S P 
     P -> F P 
     P -> eof ////Expresiones:
@@ -21,7 +22,7 @@ Producciones = {
     E2_ARIT -> - E3 E2_ARIT 
     E2_ARIT -> lambda
     E3  -> ! E3 
-    E3  -> id E4
+    E3  -> id E4    ////Funcion
     E3  -> ( E )
     E3  -> cadena
     E3  -> entero
@@ -45,7 +46,7 @@ Producciones = {
     X -> E
     X -> lambda
     S_COMPUESTA -> let T id ;
-    S_COMPUESTA -> if ( E ) S
+    S_COMPUESTA -> if ( E ) S_SIMPLE
     S_COMPUESTA -> for ( INI ; E ; ACTU ) { C }
     T -> int
     T -> float

@@ -1,5 +1,6 @@
-P -> S P 
-P -> F P 
+I -> P
+P -> S P
+P -> F P
 P -> eof ////Expresiones:
 E -> E1 E_AND
 E_AND   -> && E1 E_AND
@@ -10,15 +11,15 @@ E1_REL  -> < E2 E1_REL
 E1_REL  -> lambda
 E2      -> E3 E2_ARIT
 E2_ARIT -> + E3 E2_ARIT
-E2_ARIT -> - E3 E2_ARIT 
+E2_ARIT -> - E3 E2_ARIT
 E2_ARIT -> lambda
-E3  -> ! E3 
+E3  -> ! E3
 E3  -> id E4
 E3  -> ( E )
 E3  -> cadena
 E3  -> entero
-E3  -> real 
-E4  -> ( L ) 
+E3  -> real
+E4  -> ( L )
 E4  -> lambda ////Sentencias:
 S -> S_SIMPLE
 S -> S_COMPUESTA
@@ -37,7 +38,7 @@ Q -> lambda
 X -> E
 X -> lambda
 S_COMPUESTA -> let T id ;
-S_COMPUESTA -> if ( E ) S
+S_COMPUESTA -> if ( E ) S_SIMPLE
 S_COMPUESTA -> for ( INI ; E ; ACTU ) { C }
 T -> int
 T -> float
@@ -51,7 +52,7 @@ C -> S C
 C -> lambda ////Declaracion de funciones:
 F -> function H id ( B ) { C }
 H -> T
-H -> void
+H -> void 
 B -> T id K 
 B -> void
 K -> , T id K 
