@@ -14,7 +14,7 @@ public class Procesador {
         try {
             
             //Ruta al archivo a leer
-            String ruta = "C:\\Users\\User\\Downloads\\PIdG81 (16).txt";
+            String ruta = "C:\\Users\\User\\Downloads\\PIdG81 (1).txt";
 
             //Guardo en una lista de String el codigo a analizar para su uso en los errores
             List<String> codigoFuente = Files.readAllLines(Paths.get(ruta), StandardCharsets.ISO_8859_1);
@@ -27,7 +27,7 @@ public class Procesador {
             FileWriter parsetxt = new FileWriter("parse.txt");
             
 
-            Analizador_Sintactico sintactico = new Analizador_Sintactico(tkT,codigoFuente);
+            Analizador_Sintactico sintactico = new Analizador_Sintactico(tkT,codigoFuente, gestorTs);
             String parse = sintactico.iniciar();
 
             if (parse != null) parsetxt.write(parse);

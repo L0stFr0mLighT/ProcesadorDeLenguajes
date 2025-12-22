@@ -10,10 +10,7 @@ public class TablaDeSimbolos {
     }
 
     public void iniciar(){
-        gestorTs.activarDebug();
         gestorTs.createTPalabrasReservadas();
-        gestorTs.createAtributo("dirección", DescripcionAtributo.DIR, TipoDatoAtributo.ENTERO);
-        gestorTs.createTSGlobal();
         gestorTs.addEntradaTPalabrasReservadas("let");
         gestorTs.addEntradaTPalabrasReservadas("int");
         gestorTs.addEntradaTPalabrasReservadas("float");
@@ -26,6 +23,11 @@ public class TablaDeSimbolos {
         gestorTs.addEntradaTPalabrasReservadas("if");
         gestorTs.addEntradaTPalabrasReservadas("read");
         gestorTs.addEntradaTPalabrasReservadas("write");
+    }
+
+    public void crearTablaGlobal(){
+        gestorTs.createAtributo("desplazamiento", DescripcionAtributo.DIR, TipoDatoAtributo.ENTERO);
+        gestorTs.createTSGlobal();
     }
 
 }

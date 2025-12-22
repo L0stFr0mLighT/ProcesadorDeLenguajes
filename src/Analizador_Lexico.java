@@ -461,13 +461,15 @@ public class Analizador_Lexico {
                         if (lex.length() >= 64)throw new IdTooLargeErr(lineaActual, columna, codigoFuente, lex.length());
                         //Si no encontramos el identificador 
                         if(gestor.getEntradaTPalabrasReservadas(lex) == 0){
-                            if(gestor.getEntradaTSGlobal(lex) == 0){
-                                int pos=gestor.addEntradaTSGlobal(lex);
+                            int pos = gestor.getEntradaTSGlobal(lex);
+                            if(pos == 0){
+                                pos = gestor.addEntradaTSGlobal(lex);
                                 if(pos==0){
                                     System.out.println("Error al añadir un identificador a la tabla de símbolos global");
                                 }
                                 token = new Token(TipoToken.TYPE_IDENTIFICADOR, (Integer) pos);
                             } else token = new Token(TipoToken.TYPE_IDENTIFICADOR, (Integer) gestor.getEntradaTSGlobal(lex));
+                            token.setPos(pos);
                         } else {
                             //Analizamos palabra reservada
                             switch(gestor.getEntradaTPalabrasReservadas(lex)){
@@ -562,8 +564,6 @@ public class Analizador_Lexico {
                         token = new Token(TipoToken.TYPE_COMA, (Integer) null);
                         carActual = leer(fr);
                         break;
-                    
-                        
                 } //switch
 
                 estado_actual = estado_destino;
