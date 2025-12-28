@@ -14,7 +14,7 @@ import java.util.List;
 //TODO: zonaDecl no creo que tenga sentido pq podemos declarar implicitamente siempre -> cambiar word EDT
 //TODO: en la regla E_AND(6) creo que sobra comprobar E1_AND porque siempre sera logico y me vale con ver tipo E1 sin ver E_AND1
 //TODO: el lexer obligatoriamente tiene que insertar los pos de id? no puede hacerlo unicamnete el semantico lo de TS?
-//TODO: en el for(42) no es necesario comprobar nada pq los errores lo catchearemos antes y seran mas especificos
+//TODO: en el for(42) no es necesario comprobar nada pq los errores lo catchearemos antes y seran mas especificos, quitando la de E que tiene que ser log
 //TODO: en C(51) no ses necesario comprobar nada pq nunca deberia un error llegar a expandirse hasta alli
 
 //NOTAS PARA RETURN
@@ -78,7 +78,7 @@ public class Analizador_Sint_Sem {
      */
     private void marcaErrToken(int len) {
         errLin = linea;
-        errCol = columna;
+        errCol = Math.max(1, columna - len); //ignoro los espacio que hay delante (si hay)
         errLen = len;
     }
 
@@ -109,7 +109,7 @@ public class Analizador_Sint_Sem {
     private void errSem(String contexto, String desc) {
         throw new ErrSemantico(
                 errLin, errCol, // (x,y) -> indicara la linea y columna del error
-                errLin, errCol-1, // donde empiezan los ^ (subrayado del error)
+                errLin, errCol+1, // donde empiezan los ^ (subrayado del error)
                 lineaSF, columnaSF, // checkpoint para el CONTEXTO del error
                 contexto,
                 desc,
@@ -565,7 +565,7 @@ public class Analizador_Sint_Sem {
                     errSem("Error Relacional", "Solo se puede comparar reales ó enteros");
 
                 if (!(E2_tipo.equals(E1_REL_tipo)))
-                    errSem("Error Relacional", "No se puede comparar tipo " + E2_tipo + "y " + E1_REL_tipo);
+                    errSem("Error Relacional", "No se puede comparar tipo " + E2_tipo + " y " + E1_REL_tipo);
 
                 E1_tipo = "lógico";
             }
@@ -597,7 +597,7 @@ public class Analizador_Sint_Sem {
 
             // Accion Semantica
             if (!((E2_tipo.equals("real") || E2_tipo.equals("entero"))))
-                errSem("Desigualdad mayor incorrecta", "Solo se pueden comparar real ó entero");
+                errSem("Desigualdad mayor incorrecta", "Solo se pueden comparar real ó entero (se introdujo "+ E2_tipo+")");
 
             // Si E1_REL1 es tipo_ok entonces no hay mas comparaciones encadenadas
             if (!(E1_REL1_tipo.equals("tipo_ok")))
@@ -616,7 +616,7 @@ public class Analizador_Sint_Sem {
 
             // Accion Semantica
             if (!((E2_tipo.equals("real") || E2_tipo.equals("entero"))))
-                errSem("Desigualdad menor incorrecta", "Solo se pueden comparar real ó entero");
+                errSem("Desigualdad menor incorrecta", "Solo se pueden comparar real ó entero (se introdujo "+ E2_tipo+")");
 
             // Si E1_REL1 es tipo_ok entonces no hay mas comparaciones encadenadas
             if (!(E1_REL1_tipo.equals("tipo_ok")))
@@ -663,7 +663,7 @@ public class Analizador_Sint_Sem {
                 E2_tipo = E3_tipo;
             else {
                 if (!(E3_tipo.equals("real") || E3_tipo.equals("entero")))
-                    errSem("Error aritmetico", "Solo puede sumar o restar reales ó enteros");
+                    errSem("Error aritmetico", "Solo puede sumar o restar reales ó enteros (se introdujo "+ E3_tipo+")");
 
                 if (!(E2_ARIT_tipo.equals(E3_tipo)))
                     errSem("Error aritmetico", "No hay conversion de tipos entre " + E3_tipo + " y " + E2_ARIT_tipo);
@@ -699,7 +699,7 @@ public class Analizador_Sint_Sem {
 
             // Accion Semantica
             if (!((E3_tipo.equals("real") || E3_tipo.equals("entero"))))
-                errSem("Suma incorrecta", "Solo se pueden sumar real ó entero");
+                errSem("Suma incorrecta", "Solo se pueden sumar real ó entero (se introdujo "+ E3_tipo+")");
 
             // Si E2_ARIT es tipo_ok entonces no hay mas sumas encadenadas
             if (!(E2_ARIT1_tipo.equals(E3_tipo) || E2_ARIT1_tipo.equals("tipo_ok")))
@@ -718,7 +718,7 @@ public class Analizador_Sint_Sem {
 
             // Accion Semantica
             if (!((E3_tipo.equals("real") || E3_tipo.equals("entero"))))
-                errSem("Resta incorrecta", "Solo se pueden restar real ó entero");
+                errSem("Resta incorrecta", "Solo se pueden restar real ó entero (se introdujo "+ E3_tipo+")");
 
             // Si E2_ARIT es tipo_ok entonces no hay mas restas encadenadas
             if (!(E2_ARIT1_tipo.equals(E3_tipo) || E2_ARIT1_tipo.equals("tipo_ok")))
@@ -764,7 +764,7 @@ public class Analizador_Sint_Sem {
             // Accion Semantica
             if (!E31_tipo.equals("lógico"))
                 errSem("Negación incorrecta",
-                        "Solo se puede negar una expresión lógica; y se esta intentando negar una expresión tipo ");
+                        "Solo se puede negar una expresión lógica (se esta intentando negar una expresión tipo " + E31_tipo+")");
 
             E3_tipo = "lógico";
         }
@@ -1018,7 +1018,6 @@ public class Analizador_Sint_Sem {
             String idLex = token.getLex(); // capturo datos de id
 
             marcaErrLexema();
-
             // la variable puede ser implicita
             idPos = aseguraVarImpl(idLex);
             idTipo = gestorTs.getTipo(idPos);
@@ -1162,6 +1161,9 @@ public class Analizador_Sint_Sem {
             equipara(new Token(TipoToken.TYPE_PUNTO_Y_COMA, (Integer) null));
             marcaErrToken(1);
             E_tipo = E();
+            if(!E_tipo.equals("lógico"))
+                errSem("Condición del FOR incorrecto", 
+                        "La expresión como condicion en el FOR tiene que ser lógico (se introdujo tipo "+E_tipo+")");
             equipara(new Token(TipoToken.TYPE_PUNTO_Y_COMA, (Integer) null));
             ACTU();
             equipara(new Token(TipoToken.TYPE_PARENTESIS, (Integer) 1));
