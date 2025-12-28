@@ -10,16 +10,16 @@ import java.util.List;
 
 //TODO: revisar word que el aumento de la gramatica no esta implementado aun en el sintactico
 //TODO: revisar F(53) del word, creo que no hace falta guardar F.tipo
-//TODO: duda, si es una funcion no declarada, lo considero variable implicita y ya no? si no-> no tiene sentido requiereFuncionDeclarada
+//TODO: duda, si es una función no declarada, lo considero variable implicita y ya no? si no-> no tiene sentido requiereFunciónDeclarada
 //TODO: zonaDecl no creo que tenga sentido pq podemos declarar implicitamente siempre -> cambiar word EDT
-//TODO: en la regla E_AND(6) creo que sobra comprobar E1_AND porque siempre sera logico y me vale con ver tipo E1 sin ver E_AND1
+//TODO: en la regla E_AND(6) creo que sobra comprobar E1_AND porque siempre sera lógico y me vale con ver tipo E1 sin ver E_AND1
 //TODO: el lexer obligatoriamente tiene que insertar los pos de id? no puede hacerlo unicamnete el semantico lo de TS?
 //TODO: en el for(42) no es necesario comprobar nada pq los errores lo catchearemos antes y seran mas especificos, quitando la de E que tiene que ser log
 //TODO: en C(51) no ses necesario comprobar nada pq nunca deberia un error llegar a expandirse hasta alli
 
 //NOTAS PARA RETURN
 // - "tipo_ok" -> no hubo returns (ausencia de returns)
-// - "vacío" -> hubo "return;" = sin expr (vacío representa literalmente la nada != void)
+// - "vacio" -> hubo "return;" = sin expr (vacio representa literalmente la nada != void)
 // - "entero"/"real"/... -> hubo return de expresion con ese tipo
 
 public class Analizador_Sint_Sem {
@@ -41,7 +41,7 @@ public class Analizador_Sint_Sem {
     private int despGlob;
     private int despLoc;
     private int contadorEtiquetas;
-    private boolean enFuncion;
+    private boolean enFunción;
     private Token tokenSig;
     private int lineaSig;
     private int columnaSig;
@@ -119,10 +119,10 @@ public class Analizador_Sint_Sem {
 
     // -------------------------------------------------------------------------------
 
-    // METODOS Y FUNCIONES AUXILIARES PARA A.SEMANTICO
+    // METODOS Y FUNCIóNES AUXILIARES PARA A.SEMANTICO
     // -------------------------------------------------------------------------------
     /**
-     * Funcion auxiliar para generar nuevas etiquetas.
+     * Función auxiliar para generar nuevas etiquetas.
      * 
      * @return nueva etiqueta (String)
      */
@@ -131,7 +131,7 @@ public class Analizador_Sint_Sem {
     }
 
     /**
-     * Funcion auxiliar para generar mensaje de cadena de parametros -> lo uso para
+     * Función auxiliar para generar mensaje de cadena de parametros -> lo uso para
      * imprimir una lista de parametros
      * 
      * @param paramType lista de parametros
@@ -148,7 +148,7 @@ public class Analizador_Sint_Sem {
     }
 
     /**
-     * Función para convertir NodePositionList<String> a String[] -> lo uso para
+     * función para convertir NodePositionList<String> a String[] -> lo uso para
      * lista de tipos de parámetros.
      * 
      * @param lista NodePositionList<String>
@@ -163,7 +163,7 @@ public class Analizador_Sint_Sem {
     }
 
     /**
-     * Función auxiliar para comprobar variable o crearla implicitamente en TSGlobal
+     * función auxiliar para comprobar variable o crearla implicitamente en TSGlobal
      * si no existe.
      * 
      * @param lex
@@ -241,7 +241,7 @@ public class Analizador_Sint_Sem {
         // Inicio del analisis sintactico
         // Inicializamos TS Global
         despGlob = 0;
-        enFuncion = false;
+        enFunción = false;
 
         // Precarga de 2 tokens (necesario para tactica magica de looking ahead)
         Pair<Token, Pair<Integer, Integer>> p1 = aLex.nextTokenWithPos();
@@ -327,7 +327,7 @@ public class Analizador_Sint_Sem {
     }
 
     /**
-     * Funcion para el analisis de la produccion S.
+     * Función para el analisis de la produccion S.
      * 
      * @return Pair<String, String> donde el primer String es el tipo de la
      *         sentencia y el segundo String es el tipo de retorno (si lo hay).
@@ -371,22 +371,22 @@ public class Analizador_Sint_Sem {
         marcaPal("function");
         equipara(new Token(TipoToken.TYPE_FUNCTION, (Integer) null));
 
-        String H_tipo = H(); // tipo de retorno ("entero", "real", "lógico", "cadena", "vacío")
+        String H_tipo = H(); // tipo de retorno ("entero", "real", "lógico", "cadena", "vacio")
         String idLex = token.getLex();
         int idPos = gestorTs.getEntradaTSGlobal(idLex);
         // Miro que no esté ya declarada la variable
         if (gestorTs.getTipo(idPos) != null) {
             errSem("Error de redeclaración de variable",
                     "La variable " + idLex + " ya esta declarado como " + gestorTs.getTipo(idPos)
-                            + " y no admite Error de redeclaración");
+                            + " y no admite redeclaracion a tipo función");
         }
         // ids a la TSGlobal bien (comprobacion innecesaria ahora, pero para
         // modificaciones futuras puede ser util)
         if (idPos == 0)
             idPos = gestorTs.addEntradaTSGlobal(idLex);
 
-        // Registrar funcion en TS y guardar atributos
-        gestorTs.setTipo(idPos, "función");
+        // Registrar función en TS y guardar atributos
+        int c = gestorTs.setTipo(idPos, "función");
         gestorTs.setValorAtributoCad(idPos, ATR_TIPO_RET, H_tipo);
         gestorTs.setValorAtributoCad(idPos, ATR_ETIQUETA, nuevaEtiqueta());
 
@@ -394,9 +394,9 @@ public class Analizador_Sint_Sem {
         token.setPos(idPos);
         equipara(new Token(TipoToken.TYPE_IDENTIFICADOR, (Integer) null));
 
-        // Crear TS local para la funcion y desplazamiento local a 0
+        // Crear TS local para la función y desplazamiento local a 0
         gestorTs.createTSLocal();
-        enFuncion = true;
+        enFunción = true;
         despLoc = 0;
 
         // --Parametros--
@@ -407,8 +407,8 @@ public class Analizador_Sint_Sem {
         // Registrar tipos de parametros en TS
         String[] tiposParam;
         int numParam;
-        // Si solo tiene el elemento "vacío" significará que no recibe parametros
-        if (B_tipo.size() == 1 && B_tipo.first().element().equals("vacío")) {
+        // Si solo tiene el elemento "vacio" significará que no recibe parametros
+        if (B_tipo.size() == 1 && B_tipo.first().element().equals("vacio")) {
             tiposParam = new String[0];
             numParam = 0;
         } else {
@@ -427,33 +427,33 @@ public class Analizador_Sint_Sem {
         if (res != 0) {
             System.out.println("Error al intentar escribir la tabla local en el fichero");
         }
-        // destruir TS local + volver global + estamos fuera de funcion
+        // destruir TS local + volver global + estamos fuera de función
         gestorTs.destroy(TS_Gestor.Tabla.LOCAL);
-        enFuncion = false;
+        enFunción = false;
 
         String C_ret = C_par.getRight();
 
         // Miro si ha retornado algo
         if (!"tipo_ok".equals(C_ret)) {
-            // SI returnea, miro si mi funcion era void
-            if ("vacío".equals(H_tipo)) {
-                // función void: solo puede retornar vacío (o nada)
-                if (!"vacío".equals(C_ret)) {
+            // SI returnea, miro si mi función era void
+            if ("vacio".equals(H_tipo)) {
+                // función void: solo puede retornar vacio (o nada)
+                if (!"vacio".equals(C_ret)) {
                     errSem("Return en metodo (función void)",
-                            "La funcion es tipo void y se ha returnado tipo " + C_ret);
+                            "La función es tipo void y se ha returnado tipo " + C_ret);
                 }
             } else {
                 // función no void: return expr debe coincidir con H_tipo
                 if (!H_tipo.equals(C_ret)) {
                     errSem("Return tipo en función incorrecto",
-                            "La funcion " + idLex + " es tipo " + H_tipo + " y se ha returnado tipo " + C_ret);
+                            "La función " + idLex + " es tipo " + H_tipo + " y se ha returnado tipo " + C_ret);
                 }
             }
         }
     }
 
     /**
-     * Funcion para el analisis de la produccion E.
+     * Función para el analisis de la produccion E.
      * 
      * @return E.tipo
      */
@@ -492,7 +492,7 @@ public class Analizador_Sint_Sem {
     }
 
     /**
-     * Funcion para el analisis de la produccion E_AND.
+     * Función para el analisis de la produccion E_AND.
      * 
      * @return E_AND.tipo
      */
@@ -540,7 +540,7 @@ public class Analizador_Sint_Sem {
     }
 
     /**
-     * Funcion para el analisis de la produccion E1.
+     * Función para el analisis de la produccion E1.
      * 
      * @return E1.tipo
      */
@@ -571,14 +571,14 @@ public class Analizador_Sint_Sem {
             }
         } else
             throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, columna, lineaSF, columnaSF,
-                    "Expresión incompleta después de operador logico (E1)", token.getTipo(),
+                    "Expresión incompleta después de operador lógico (E1)", token.getTipo(),
                     "NEGACION, ID, PARENTESIS, CADENA, ENTERO, REAL", codigoFuente, token.getLex());
 
         return E1_tipo;
     }
 
     /**
-     * Funcion para el analisis de la produccion E1_REL.
+     * Función para el analisis de la produccion E1_REL.
      * 
      * @return E1_REL.tipo
      */
@@ -641,7 +641,7 @@ public class Analizador_Sint_Sem {
     }
 
     /**
-     * Funcion para el analisis de la produccion E2.
+     * Función para el analisis de la produccion E2.
      * 
      * @return E2.tipo
      */
@@ -680,7 +680,7 @@ public class Analizador_Sint_Sem {
     }
 
     /**
-     * Funcion para el analisis de la produccion E2_ARIT.
+     * Función para el analisis de la produccion E2_ARIT.
      * 
      * @return E2_ARIT.tipo
      */
@@ -744,7 +744,7 @@ public class Analizador_Sint_Sem {
     }
 
     /**
-     * Funcion para el analisis de la produccion E3.
+     * Función para el analisis de la produccion E3.
      * 
      * @return E3.tipo
      */
@@ -785,11 +785,11 @@ public class Analizador_Sint_Sem {
                 // variable
                 idPos = aseguraVarImpl(idLex);
             } else {
-                // Compruebo que ya sea una funcion declarada
+                // Compruebo que ya sea una función declarada
                 idPos = gestorTs.getEntradaTSGlobal(idLex);
                 if (idPos == 0) {
-                    errSem("Función no declarada previamente",
-                            "La funcion " + idLex + " no esta declarado y no se puede declarar implicitamente");
+                    errSem("función no declarada previamente",
+                            "La función " + idLex + " no esta declarado y no se puede declarar implicitamente");
                 }
             }
             token.setAtributo(idPos);
@@ -803,7 +803,7 @@ public class Analizador_Sint_Sem {
             } else {
 
                 // Compruebo lista de parametros
-                String[] args = (E4_tipo.size() == 1 && E4_tipo.first().element().equals("vacío")) ? new String[0]
+                String[] args = (E4_tipo.size() == 1 && E4_tipo.first().element().equals("vacio")) ? new String[0]
                         : listaToStrings(E4_tipo);
                 String[] paramTypes = gestorTs.getValorAtributoLista(idPos, ATR_TIPO_PARAM);
                 if (paramTypes == null)
@@ -811,7 +811,7 @@ public class Analizador_Sint_Sem {
                 boolean ok = paramTypes.length == args.length;
                 if (!ok)
                     errSem("Número de parametros incorrectos",
-                            "La funcion pide " + paramTypes.length + " y se han introducido " + args.length);
+                            "La función pide " + paramTypes.length + " y se han introducido " + args.length);
 
                 int i;
                 for (i = 0; i < args.length && ok; i++)
@@ -872,7 +872,7 @@ public class Analizador_Sint_Sem {
     }
 
     /**
-     * Funcion para el analisis de la produccion E4.
+     * Función para el analisis de la produccion E4.
      * 
      * @return Lista de tipos
      */
@@ -901,7 +901,7 @@ public class Analizador_Sint_Sem {
 
             // Accion Semantica
             E4_tipo = new NodePositionList<>();
-            E4_tipo.addLast("vacío"); // Para simbolizar la no llamada a funcion, pongo un solo elemento "vacío"
+            E4_tipo.addLast("vacio"); // Para simbolizar la no llamada a función, pongo un solo elemento "vacio"
         } else
             throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, columna, lineaSF, columnaSF,
                     "Después del identificador se esperaba una llamada a función '(...)' o nada (E4)", token.getTipo(),
@@ -911,7 +911,7 @@ public class Analizador_Sint_Sem {
     }
 
     /**
-     * Funcion para el analisis de la producion S_SIMPLE.
+     * Función para el analisis de la producion S_SIMPLE.
      * 
      * @return S_SIMPLE.tipo y S_SIMPLE.ret (ambos Strings)
      */
@@ -942,12 +942,12 @@ public class Analizador_Sint_Sem {
                 idPos = aseguraVarImpl(idLex);
 
             } else if (esLlamada) {
-                // id es FUNCIÓN
+                // id es función
                 idPos = gestorTs.getEntradaTSGlobal(idLex);
                 // Debe ser una llamada a función y esta tiene que estar declarada
                 if (idPos == 0) {
-                    errSem("Función no declarada previamente",
-                            "La funcion " + idLex + " no esta declarado y no se puede declarar implicitamente");
+                    errSem("función no declarada previamente",
+                            "La función " + idLex + " no esta declarado y no se puede declarar implicitamente");
                 }
             }
             // si el siguiente token no es ninguno de los dos esperados, dejo pasar el id
@@ -968,7 +968,7 @@ public class Analizador_Sint_Sem {
                 S_SIMPLE_tipo = "tipo_ok";
             } else {
                 // Compruebo lista de parametros
-                String[] args = (ASIGFUN_tipo.size() == 1 && ASIGFUN_tipo.first().element().equals("vacío"))
+                String[] args = (ASIGFUN_tipo.size() == 1 && ASIGFUN_tipo.first().element().equals("vacio"))
                         ? new String[0]
                         : listaToStrings(ASIGFUN_tipo);
                 String[] paramTypes = gestorTs.getValorAtributoLista(idPos, ATR_TIPO_PARAM);
@@ -977,7 +977,7 @@ public class Analizador_Sint_Sem {
                 boolean ok = paramTypes.length == args.length;
                 if (!ok)
                     errSem("Número de parametros incorrectos",
-                            "La funcion pide " + paramTypes.length + " y se han introducido " + args.length);
+                            "La función pide " + paramTypes.length + " y se han introducido " + args.length);
 
                 int i;
                 for (i = 0; i < args.length && ok; i++)
@@ -1055,7 +1055,7 @@ public class Analizador_Sint_Sem {
     }
 
     /**
-     * Funcion para el analisis de la produccion S_COMPUESTA.
+     * Función para el analisis de la produccion S_COMPUESTA.
      * 
      * @return S_COMPUESTA.tipo y S_COMPUESTA.ret
      */
@@ -1088,13 +1088,13 @@ public class Analizador_Sint_Sem {
             marcaErrLexema();
 
             // meto variable en TS
-            if (enFuncion) {
+            if (enFunción) {
                 // Compruebo si ya existe en local
                 int posLocal = gestorTs.getEntradaTSLocal(idLex);
                 if (posLocal != 0) {
                     errSem("Error de redeclaración de variable",
                             "La variable " + idLex + " ya esta declarado como " + gestorTs.getTipo(posLocal)
-                                    + " y no admite Error de redeclaración");
+                                    + " y no admite redeclaracion a tipo "+T_tipo);
                 }
 
                 posLocal = gestorTs.addEntradaTSLocal(idLex); // NEGATIVO
@@ -1109,7 +1109,7 @@ public class Analizador_Sint_Sem {
                 if (posG != 0 && gestorTs.getTipo(posG) != null) {
                     errSem("Error de redeclaración de variable",
                             "La variable " + idLex + " ya esta declarado como " + gestorTs.getTipo(posG)
-                                    + " y no admite Error de redeclaración");
+                                    + " y no admite redeclaracion a tipo "+T_tipo);
                 }
 
                 // id a la TSGlobal bien (posible comprobacion innecesaria)
@@ -1187,7 +1187,7 @@ public class Analizador_Sint_Sem {
     }
 
     /**
-     * Funcion para el analisis de la produccion ASIGFUN.
+     * Función para el analisis de la produccion ASIGFUN.
      * 
      * @return Lista de tipos (si es asignacion -> un solo tipo)
      */
@@ -1235,7 +1235,7 @@ public class Analizador_Sint_Sem {
     }
 
     /**
-     * Funcion para el analisis de la produccion A.
+     * Función para el analisis de la produccion A.
      * 
      * @return A.tipo
      */
@@ -1269,7 +1269,7 @@ public class Analizador_Sint_Sem {
     }
 
     /**
-     * Funcion para el analisis de la produccion L.
+     * Función para el analisis de la produccion L.
      * 
      * @return Lista de tipos (Es el comienzo, le sigue Q)
      */
@@ -1308,7 +1308,7 @@ public class Analizador_Sint_Sem {
     }
 
     /**
-     * Funcion para el analisis de la produccion Q.
+     * Función para el analisis de la produccion Q.
      * 
      * @return Lista de tipos (Es la continuacion de L)
      */
@@ -1346,7 +1346,7 @@ public class Analizador_Sint_Sem {
     }
 
     /**
-     * Funcion para el analisis de la produccion X. Usado concretamente para el
+     * Función para el analisis de la produccion X. Usado concretamente para el
      * return (return X).
      * 
      * @return X.tipo.
@@ -1370,7 +1370,7 @@ public class Analizador_Sint_Sem {
             parse = parse.concat("39 ");
 
             // Accion Semantica
-            X_tipo = "vacío";
+            X_tipo = "vacio";
 
         } else
             throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, columna, lineaSF, columnaSF,
@@ -1381,7 +1381,7 @@ public class Analizador_Sint_Sem {
     }
 
     /**
-     * Funcion para el analisis de la produccion T. Son los tipos de datos.
+     * Función para el analisis de la produccion T. Son los tipos de datos.
      * 
      * @return T.tipo y T.ancho
      */
@@ -1434,7 +1434,7 @@ public class Analizador_Sint_Sem {
     }
 
     /**
-     * Funcion para el analisis de la produccion INI.
+     * Función para el analisis de la produccion INI.
      * 
      * @return INI.tipo
      */
@@ -1480,7 +1480,7 @@ public class Analizador_Sint_Sem {
     }
 
     /**
-     * Funcion para el analisis de la produccion ACTU.
+     * Función para el analisis de la produccion ACTU.
      * 
      * @return ACTU.tipo
      */
@@ -1537,7 +1537,7 @@ public class Analizador_Sint_Sem {
     }
 
     /**
-     * Funcion para el analisis de la produccion C.
+     * Función para el analisis de la produccion C.
      * 
      * @return C.tipo y C.ret
      */
@@ -1602,7 +1602,7 @@ public class Analizador_Sint_Sem {
     }
 
     /**
-     * Funcion para el analisis de la produccion H.
+     * Función para el analisis de la produccion H.
      * 
      * @return H.tipo
      */
@@ -1626,7 +1626,7 @@ public class Analizador_Sint_Sem {
             equipara(new Token(TipoToken.TYPE_VOID, (Integer) null));
 
             // Accion Semantica
-            H_tipo = "vacío"; // Simbolizo que no necesito return
+            H_tipo = "vacio"; // Simbolizo que no necesito return
 
         } else
             throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, columna, lineaSF, columnaSF,
@@ -1637,7 +1637,7 @@ public class Analizador_Sint_Sem {
     }
 
     /**
-     * Funcion para el analisis de la produccion B. Comienzo de lista param para fun
+     * Función para el analisis de la produccion B. Comienzo de lista param para fun
      * en TSLocal.
      * 
      * @return Lista de tipos
@@ -1662,7 +1662,7 @@ public class Analizador_Sint_Sem {
             if (idPos != 0) {
                 errSem("Error de redeclaración de variable",
                         "La variable " + idLex + " ya esta declarado como " + gestorTs.getTipo(idPos)
-                                + " y no admite Error de redeclaración");
+                                + "y no admite redeclaracion a tipo "+T_tipo);
             }
 
             // Insertar parametro en TS local
@@ -1687,7 +1687,7 @@ public class Analizador_Sint_Sem {
         else if (type == TipoToken.TYPE_VOID) {
             parse = parse.concat("57 ");
             equipara(new Token(TipoToken.TYPE_VOID, (Integer) null));
-            B_tipo.addLast("vacío");
+            B_tipo.addLast("vacio");
         } else
             throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, columna, lineaSF, columnaSF,
                     "Lista de parámetros mal formada o incompleta (B)", token.getTipo(),
@@ -1697,7 +1697,7 @@ public class Analizador_Sint_Sem {
     }
 
     /**
-     * Funcion para el analisis de la produccion K. Continuacion de B en TSLocal.
+     * Función para el analisis de la produccion K. Continuacion de B en TSLocal.
      * 
      * @return Lista de tipos
      */
@@ -1723,7 +1723,7 @@ public class Analizador_Sint_Sem {
             if (idPos != 0) {
                 errSem("Error de redeclaración de variable",
                         "La variable " + idLex + " ya esta declarado como " + gestorTs.getTipo(idPos)
-                                + " y no admite Error de redeclaración");
+                                + " y no admite redeclaracion a tipo "+T_tipo);
             }
 
             idPos = gestorTs.addEntradaTSLocal(idLex);
@@ -1750,7 +1750,7 @@ public class Analizador_Sint_Sem {
 
         } else
             throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, columna, lineaSF, columnaSF,
-                    "Error en los parametros de la funcion (K)", token.getTipo(), "COMA, PARENTESIS", codigoFuente,
+                    "Error en los parametros de la función (K)", token.getTipo(), "COMA, PARENTESIS", codigoFuente,
                     token.getLex());
 
         return K_tipo;
