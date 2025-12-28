@@ -11,6 +11,9 @@ public enum CodError{
     FALTA_DECIMAL,
 
     //Analizador Sintactico
-    TERMINAL_INESPERADO,
-    TOKEN_INESPERADO
+    TOKEN_INESPERADO,
+
+    //Analizador Semantico
+    ERR_SEMANTICO
+
 }

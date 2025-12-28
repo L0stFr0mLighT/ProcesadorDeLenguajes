@@ -1,6 +1,10 @@
-package Errores;
+package Errores.Lex;
 
 import java.util.List;
+
+import Errores.CodError;
+import Errores.Err;
+import Errores.TipoError;
 
 public class IntTooLargeErr extends Err {
     public IntTooLargeErr(int linea, int columna, int num, List<String> codigoFuente, int longitudErr) {

@@ -43,8 +43,16 @@ public class Token {
         return pos;
     }
 
+    public void setAtributo(int pos){
+        this.atributo = pos;
+    }
+
     public void setPos(int pos) {
         this.pos = pos;
+    }
+
+    public void setLexema(String lex){
+        this.atrLex = lex;
     }
     
     @Override

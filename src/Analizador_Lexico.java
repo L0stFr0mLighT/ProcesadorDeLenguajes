@@ -2,6 +2,14 @@ import java.io.*;
 
 import Enumeraciones.*;
 import Errores.*;
+import Errores.Lex.CadenaNoTerminadaErr;
+import Errores.Lex.CadenaTooLargeErr;
+import Errores.Lex.ComentarioNoTerminadoErr;
+import Errores.Lex.FaltaDecimal;
+import Errores.Lex.IdTooLargeErr;
+import Errores.Lex.IntTooLargeErr;
+import Errores.Lex.InvalidCaracterErr;
+import Errores.Lex.RealTooLargeErr;
 import es.upm.aedlib.Pair;
 import es.upm.aedlib.map.*;
 import tslib.TS_Gestor;
@@ -458,18 +466,19 @@ public class Analizador_Lexico {
                     //Genero Token ID (8-17)
                     case 'L':
                         //EXCEPTION: id demasiado grande
+                        //TODO: creo que este error sobraba
                         if (lex.length() >= 64)throw new IdTooLargeErr(lineaActual, columna, codigoFuente, lex.length());
-                        //Si no encontramos el identificador 
+                        //Miramos si es palabra reservada
                         if(gestor.getEntradaTPalabrasReservadas(lex) == 0){
-                            int pos = gestor.getEntradaTSGlobal(lex);
-                            if(pos == 0){
-                                pos = gestor.addEntradaTSGlobal(lex);
-                                if(pos==0){
-                                    System.out.println("Error al añadir un identificador a la tabla de símbolos global");
-                                }
-                                token = new Token(TipoToken.TYPE_IDENTIFICADOR, (Integer) pos);
-                            } else token = new Token(TipoToken.TYPE_IDENTIFICADOR, (Integer) gestor.getEntradaTSGlobal(lex));
+                            int pos = gestor.getEntradaTS(lex);
+                            // if(pos == 0){
+                            //     pos = gestor.addEntradaTSGlobal(lex);
+                            //     if(pos==0){
+                            //         System.out.println("Error al añadir un identificador a la tabla de símbolos global");
+                            //     }
+                            token = new Token(TipoToken.TYPE_IDENTIFICADOR, (Integer) pos);
                             token.setPos(pos);
+                            token.setLexema(lex);
                         } else {
                             //Analizamos palabra reservada
                             switch(gestor.getEntradaTPalabrasReservadas(lex)){

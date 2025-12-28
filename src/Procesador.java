@@ -21,39 +21,21 @@ public class Procesador {
             TS_Gestor gestorTs = new TS_Gestor("tabladesimbolos.txt");
             TablaDeSimbolos tabla = new TablaDeSimbolos(gestorTs);
             tabla.iniciar();
+            tabla.crearTablaGlobal();
 
             Analizador_Lexico lexico = new Analizador_Lexico(ruta, gestorTs, codigoFuente);
-            TokenTexto tkT = new TokenTexto(lexico, "tokens.txt");
+            LexerConTexto aLex = new LexerConTexto(lexico, "tokens.txt");
             FileWriter parsetxt = new FileWriter("parse.txt");
             
 
-            Analizador_Sintactico sintactico = new Analizador_Sintactico(tkT,codigoFuente, gestorTs);
+            Analizador_Sint_Sem sintactico = new Analizador_Sint_Sem(aLex,codigoFuente, gestorTs);
             String parse = sintactico.iniciar();
 
             if (parse != null) parsetxt.write(parse);
-            tkT.close();
+            aLex.close();
             parsetxt.close();
-
-            //IMPRESION DE MENSAJE ANTIGUO EN ARCHIVO TOKEN
-
-            // Token token;
-            // //Proceso tokens hasta que encuentre EOF o null (error)
-            // do {
-            //     token = lexico.iniciar().getLeft();
-            //     if (token == null) {
-            //         writer.write("Ha ocurrido un error generando este token");
-            //     } else if (token.getTipo() == TipoToken.TYPE_CADENA) {
-            //         writer.write("<" + token.getTipo().ordinal() + ", \"" + token.getLex() + "\">\n");
-            //     } else if (token.getTipo() == TipoToken.TYPE_REAL) {
-            //         writer.write("<" + token.getTipo().ordinal() + ", " + token.getNum() + ">\n");
-            //     } else if (token.getAtributo() == null){
-            //         writer.write("<" + token.getTipo().ordinal() + ", " + ">\n");
-            //     } else {
-            //         writer.write("<" + token.getTipo().ordinal() + ", " + token.getAtributo() + ">\n");
-            //     }
-            // } while (token != null && token.getTipo() != TipoToken.TYPE_EOF);
             
-            //Errores en TS
+            //Escritura y Errores en TS
             int res=gestorTs.write(Tabla.GLOBAL);
             if(res!=0){
                 System.out.println("Error al intentar escribir la tabla global en el fichero");

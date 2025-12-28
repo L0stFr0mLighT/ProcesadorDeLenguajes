@@ -27,6 +27,11 @@ public class TablaDeSimbolos {
 
     public void crearTablaGlobal(){
         gestorTs.createAtributo("desplazamiento", DescripcionAtributo.DIR, TipoDatoAtributo.ENTERO);
+        gestorTs.createAtributo("parámetro", TS_Gestor.DescripcionAtributo.PARAM, TS_Gestor.TipoDatoAtributo.ENTERO);
+        gestorTs.createAtributo("número de parámetros", TS_Gestor.DescripcionAtributo.NUM_PARAM, TS_Gestor.TipoDatoAtributo.ENTERO);
+        gestorTs.createAtributo("tipo de parámetros", TS_Gestor.DescripcionAtributo.TIPO_PARAM, TS_Gestor.TipoDatoAtributo.LISTA);
+        gestorTs.createAtributo("tipo de retorno", TS_Gestor.DescripcionAtributo.TIPO_RET, TS_Gestor.TipoDatoAtributo.CADENA);
+        gestorTs.createAtributo("etiqueta", TS_Gestor.DescripcionAtributo.ETIQUETA, TS_Gestor.TipoDatoAtributo.CADENA);
         gestorTs.createTSGlobal();
     }
 

@@ -1,8 +1,11 @@
-package Errores;
+package Errores.Sint;
 
 import java.util.List;
 
 import Enumeraciones.TipoToken;
+import Errores.CodError;
+import Errores.Err;
+import Errores.TipoError;
 
 public class Token_Inesperado extends Err{
     

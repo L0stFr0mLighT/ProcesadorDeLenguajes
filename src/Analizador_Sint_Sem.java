@@ -1,0 +1,1754 @@
+import Enumeraciones.*;
+import Errores.Sint.Token_Inesperado;
+import Errores.Sem.ErrSemantico;
+
+import es.upm.aedlib.Pair;
+import es.upm.aedlib.positionlist.*;
+import tslib.TS_Gestor;
+
+import java.util.List;
+
+//TODO: revisar word que el aumento de la gramatica no esta implementado aun en el sintactico
+//TODO: revisar F(53) del word, creo que no hace falta guardar F.tipo
+//TODO: duda, si es una funcion no declarada, lo considero variable implicita y ya no? si no-> no tiene sentido requiereFuncionDeclarada
+//TODO: zonaDecl no creo que tenga sentido pq podemos declarar implicitamente siempre -> cambiar word EDT
+//TODO: en la regla E_AND(6) creo que sobra comprobar E1_AND porque siempre sera logico y me vale con ver tipo E1 sin ver E_AND1
+//TODO: el lexer obligatoriamente tiene que insertar los pos de id? no puede hacerlo unicamnete el semantico lo de TS?
+//TODO: en el for(42) no es necesario comprobar nada pq los errores lo catchearemos antes y seran mas especificos
+//TODO: en C(51) no ses necesario comprobar nada pq nunca deberia un error llegar a expandirse hasta alli
+
+//NOTAS PARA RETURN
+// - "tipo_ok" -> no hubo returns (ausencia de returns)
+// - "vacío" -> hubo "return;" = sin expr (vacío representa literalmente la nada != void)
+// - "entero"/"real"/... -> hubo return de expresion con ese tipo
+
+public class Analizador_Sint_Sem {
+
+    private Token token;
+    private LexerConTexto aLex;
+    private String parse;
+    private TipoToken type;
+    private int linea;
+    private int columna;
+    private int lineaAnterior;
+    private int columnaAnterior;
+    private int lineaSF;
+    private int columnaSF;
+    private List<String> codigoFuente;
+
+    // Variable para la analizador semantico
+    private TS_Gestor gestorTs;
+    private int despGlob;
+    private int despLoc;
+    private int contadorEtiquetas;
+    private boolean enFuncion;
+    private Token tokenSig;
+    private int lineaSig;
+    private int columnaSig;
+
+    // Atributos para la tabla de simbolos -> deben coincidir con los asignados en
+    // TablaDeSimbolos
+    private static final String ATR_DIR = "desplazamiento";
+    private static final String ATR_PARAM = "parámetro";
+    private static final String ATR_NUM_PARAM = "número de parámetros";
+    private static final String ATR_TIPO_PARAM = "tipo de parámetros";
+    private static final String ATR_TIPO_RET = "tipo de retorno";
+    private static final String ATR_ETIQUETA = "etiqueta";
+
+    // METODOS DE AYUDA PARA ERRORES SEMANTICOS
+    // -------------------------------------------------------------------------------
+
+    // Marcas que usaremos al lanzar el error semantico
+    private int errLin;
+    private int errCol;
+    private int errLen;
+
+    /**
+     * Metodo para marcar inicio de sentencia -> imprimir CONTEXTO
+     */
+    private void marcaInicioSentencia() {
+        lineaSF = linea;
+        columnaSF = columna;
+    }
+
+    /**
+     * Metodo para marcar token (se tiene que lanzar antes de consumirlo)
+     * 
+     * @param len longitud del token (puedes usar idlex.length)
+     */
+    private void marcaErrToken(int len) {
+        errLin = linea;
+        errCol = columna;
+        errLen = len;
+    }
+
+    /**
+     * Metodo para marcar token pero con su lexema (hecho para ID)
+     */
+    private void marcaErrLexema() {
+        String lx = token.getLex();
+        marcaErrToken(lx == null || lx.isEmpty() ? 1 : lx.length());
+    }
+
+    /**
+     * Metodo para marcar palabra clave fijas
+     * (write/read/return/if/for/let/function)
+     * 
+     * @param pal palabra clave
+     */
+    private void marcaPal(String pal) {
+        marcaErrToken(pal.length());
+    }
+
+    /**
+     * Metodo para lanzar error sem. con las marcas guardadas anteriormente
+     * 
+     * @param contexto contexto ó titulo de error
+     * @param desc     descripcion con mas detalles del error
+     */
+    private void errSem(String contexto, String desc) {
+        throw new ErrSemantico(
+                errLin, errCol, // (x,y) -> indicara la linea y columna del error
+                errLin, errCol, // donde empiezan los ^ (subrayado del error)
+                lineaSF, columnaSF, // checkpoint para el CONTEXTO del error
+                contexto,
+                desc,
+                codigoFuente,
+                errLen);
+    }
+
+    // -------------------------------------------------------------------------------
+
+    // METODOS Y FUNCIONES AUXILIARES PARA A.SEMANTICO
+    // -------------------------------------------------------------------------------
+    /**
+     * Funcion auxiliar para generar nuevas etiquetas.
+     * 
+     * @return nueva etiqueta (String)
+     */
+    private String nuevaEtiqueta() {
+        return "E" + (contadorEtiquetas++);
+    }
+
+    /**
+     * Funcion auxiliar para generar mensaje de cadena de parametros -> lo uso para
+     * imprimir una lista de parametros
+     * 
+     * @param paramType lista de parametros
+     * @return mensaje de cadena de parametros
+     */
+    private String paramCadena(String[] paramType) {
+        String res = "";
+        for (int i = 0; i < paramType.length; i++){
+            res +=  paramType[i];
+            if (i+1 != paramType.length) res += " && ";
+        }
+        return res;
+    }
+
+    /**
+     * Función para convertir NodePositionList<String> a String[] -> lo uso para
+     * lista de tipos de parámetros.
+     * 
+     * @param lista NodePositionList<String>
+     * @return String[]
+     */
+    private String[] listaToStrings(NodePositionList<String> lista) {
+        String[] a = new String[lista.size()];
+        int i = 0;
+        for (String elem : lista)
+            a[i++] = elem;
+        return a;
+    }
+
+    /**
+     * Función auxiliar para comprobar variable o crearla implicitamente en TSGlobal
+     * si no existe.
+     * 
+     * @param lex
+     * @return posicion en TS (int) de la variable (puede ya existir o ser creada
+     *         implicitamente)
+     */
+    private int aseguraVarImpl(String lex) {
+        // si existe local, usarla
+        int posL = gestorTs.getEntradaTSLocal(lex);
+        if (posL != 0)
+            return posL; // negativo
+
+        // si existe global, usarla
+        int posG = gestorTs.getEntradaTSGlobal(lex);
+        if (posG != 0 && gestorTs.getTipo(posG) != null)
+            return posG; // positivo
+
+        // si no existe, crear global entera implícita
+        if (posG == 0)
+            posG = gestorTs.addEntradaTSGlobal(lex);
+        if (gestorTs.getTipo(posG) == null)
+            gestorTs.setTipo(posG, "entero");
+        gestorTs.setValorAtributoEnt(posG, ATR_DIR, despGlob);
+        gestorTs.setValorAtributoEnt(posG, ATR_PARAM, 0);
+        despGlob += 1; // ancho entero
+        return posG;
+    }
+
+    // -------------------------------------------------------------------------------
+
+    /**
+     * Constructor del analizador sintactico.
+     * 
+     * @param aLex         Analizador léxico inicializado y preparado para escribir.
+     * @param codigoFuente Código fuente original (lista de líneas).
+     * @param gestorTs     Gestor de la tabla de símbolos.
+     */
+    public Analizador_Sint_Sem(LexerConTexto aLex, List<String> codigoFuente, TS_Gestor gestorTs) {
+        this.aLex = aLex;
+        parse = "D ";
+        this.codigoFuente = codigoFuente;
+        this.gestorTs = gestorTs;
+    }
+
+    /**
+     * Metodo para avanzar al siguiente token del analizador lexico.
+     */
+    private void nextToken() {
+        // guardo el anterior (para errores)
+        lineaAnterior = linea;
+        columnaAnterior = columna;
+
+        //el siguiente pasa a ser el actual
+        token = tokenSig;
+        linea = lineaSig;
+        columna = columnaSig;
+
+        // leo un nuevo "siguiente"
+        Pair<Token, Pair<Integer, Integer>> par = aLex.nextTokenWithPos();
+        tokenSig = par.getLeft();
+        lineaSig = par.getRight().getLeft();
+        columnaSig = par.getRight().getRight();
+
+        type = token.getTipo();
+
+    }
+
+    /**
+     * Metodo para iniciar el analisis sintactico.
+     * 
+     * @return cadena con la secuencia de producciones aplicadas.
+     */
+    public String iniciar() {
+
+        // Inicio del analisis sintactico
+        // Inicializamos TS Global
+        despGlob = 0;
+        enFuncion = false;
+
+        // Precarga de 2 tokens (necesario para tactica magica de looking ahead)
+        Pair<Token, Pair<Integer, Integer>> p1 = aLex.nextTokenWithPos();
+        token = p1.getLeft();
+        linea = p1.getRight().getLeft();
+        columna = p1.getRight().getRight();
+
+        Pair<Token, Pair<Integer, Integer>> p2 = aLex.nextTokenWithPos();
+        tokenSig = p2.getLeft();
+        lineaSig = p2.getRight().getLeft();
+        columnaSig = p2.getRight().getRight();
+
+        type = token.getTipo();
+        I();
+
+        // Si no hemos consumido todo el codigo fuente, error
+        if (token.getTipo() != TipoToken.TYPE_EOF) {
+            throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, columna, lineaSF, columnaSF, "I",
+                    token.getTipo(), "EOF", codigoFuente, token.getLex());
+        }
+        return parse;
+    }
+
+    /**
+     * Metodo para comprobar si el terminal leido es correcto. Si lo es, avanza al
+     * siguiente token. Si no lo es, lanza error.
+     */
+    private void equipara(Token t) {
+        // En ID,INT,FLOAT,STRING imponemos una restriccion mas suave (no miramos su
+        // atributo)
+        if (token.getTipo() == TipoToken.TYPE_IDENTIFICADOR && TipoToken.TYPE_IDENTIFICADOR == t.getTipo() ||
+                token.getTipo() == TipoToken.TYPE_ENTERO && TipoToken.TYPE_ENTERO == t.getTipo() ||
+                token.getTipo() == TipoToken.TYPE_REAL && TipoToken.TYPE_REAL == t.getTipo() ||
+                token.getTipo() == TipoToken.TYPE_CADENA && TipoToken.TYPE_CADENA == t.getTipo() ||
+                token.equals(t)) {
+
+            //escribo token y avanzo
+            aLex.imprimirToken(token);
+            nextToken();
+        } else {
+            // Token_Inesperado gestiona internamente el mensaje a imprimir segun si debe
+            // comprobar atributo o no
+            throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, columna, lineaSF, columnaSF,
+                    "Equiparando", token.getTipo(), t.getTipo().toString(), codigoFuente, token.getLex());
+        }
+    }
+
+    // Gramatica aumentada para acciones semanticas
+    private void I() {
+        // 1. I -> P
+        if (type == TipoToken.TYPE_IDENTIFICADOR || type == TipoToken.TYPE_WRITE ||
+                type == TipoToken.TYPE_READ || type == TipoToken.TYPE_RETURN ||
+                type == TipoToken.TYPE_LET || type == TipoToken.TYPE_IF || type == TipoToken.TYPE_FOR ||
+                type == TipoToken.TYPE_FUNCTION || type == TipoToken.TYPE_EOF) {
+
+            parse = parse.concat("1 ");
+            P();
+        }
+    };
+
+    // AXIOMA
+    private void P() {
+        // 2. P -> S P
+        if (type == TipoToken.TYPE_IDENTIFICADOR || type == TipoToken.TYPE_WRITE ||
+                type == TipoToken.TYPE_READ || type == TipoToken.TYPE_RETURN ||
+                type == TipoToken.TYPE_LET || type == TipoToken.TYPE_IF || type == TipoToken.TYPE_FOR) {
+            parse = parse.concat("2 ");
+            S();
+            P();
+        } // 3. P -> F P
+        else if (type == TipoToken.TYPE_FUNCTION) {
+            parse = parse.concat("3 ");
+            F();
+            P();
+        } // 4. P -> EOF
+        else if (type == TipoToken.TYPE_EOF) {
+            parse = parse.concat("4 ");
+            equipara(new Token(TipoToken.TYPE_EOF, (Integer) null));
+        } else
+            throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, columna, lineaSF, columnaSF,
+                    "Se esperaba una sentencia, una declaración de función o el fin del archivo (P)", token.getTipo(),
+                    "ID, WRITE, READ, RETURN, LET, IF, FOR, FUNCTION, EOF", codigoFuente, token.getLex());
+    }
+
+    /**
+     * Funcion para el analisis de la produccion S.
+     * 
+     * @return Pair<String, String> donde el primer String es el tipo de la
+     *         sentencia y el segundo String es el tipo de retorno (si lo hay).
+     */
+    private Pair<String, String> S() {
+
+        // 24. S -> S_SIMPLE
+        String tipo;
+        String ret;
+        Pair<String, String> par;
+        if (type == TipoToken.TYPE_IDENTIFICADOR || type == TipoToken.TYPE_WRITE ||
+                type == TipoToken.TYPE_READ || type == TipoToken.TYPE_RETURN) {
+            parse = parse.concat("24 ");
+            par = S_SIMPLE();
+        }
+
+        // 25. S -> S_COMPUESTA
+        else if (type == TipoToken.TYPE_LET || type == TipoToken.TYPE_IF || type == TipoToken.TYPE_FOR) {
+            parse = parse.concat("25 ");
+            par = S_COMPUESTA();
+        }
+
+        else
+            throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, columna, lineaSF, columnaSF,
+                    "Sentencia no válida (S)", token.getTipo(), "ID, WRITE, READ, RETURN, LET, IF, FOR", codigoFuente,
+                    token.getLex());
+
+        tipo = par.getLeft();
+        ret = par.getRight();
+        return new Pair<String, String>(tipo, ret);
+    }
+
+    /**
+     * Metodo para el analisis de la produccion F.
+     */
+    private void F() {
+
+        marcaInicioSentencia(); // Checkpoint para CONTEXTO del error
+        // 53. F -> function H id ( B ) { C }
+        parse = parse.concat("53 ");
+        marcaPal("function");
+        equipara(new Token(TipoToken.TYPE_FUNCTION, (Integer) null));
+
+        String H_tipo = H(); // tipo de retorno ("entero", "real", "lógico", "cadena", "vacío")
+        String idLex = token.getLex();
+        int idPos = gestorTs.getEntradaTSGlobal(idLex);
+        // Miro que no esté ya declarada la variable
+        if (gestorTs.getTipo(idPos) != null) {
+            errSem("Error de redeclaración de variable",
+                    "La variable " + idLex + " ya esta declarado como " + gestorTs.getTipo(idPos)
+                            + " y no admite Error de redeclaración");
+        }
+        // ids a la TSGlobal bien (comprobacion innecesaria ahora, pero para
+        // modificaciones futuras puede ser util)
+        if (idPos == 0)
+            idPos = gestorTs.addEntradaTSGlobal(idLex);
+
+        // Registrar funcion en TS y guardar atributos
+        gestorTs.setTipo(idPos, "función");
+        gestorTs.setValorAtributoCad(idPos, ATR_TIPO_RET, H_tipo);
+        gestorTs.setValorAtributoCad(idPos, ATR_ETIQUETA, nuevaEtiqueta());
+
+        token.setAtributo(idPos);
+        token.setPos(idPos);
+        equipara(new Token(TipoToken.TYPE_IDENTIFICADOR, (Integer) null));
+
+        // Crear TS local para la funcion y desplazamiento local a 0
+        gestorTs.createTSLocal();
+        enFuncion = true;
+        despLoc = 0;
+
+        // --Parametros--
+        equipara(new Token(TipoToken.TYPE_PARENTESIS, (Integer) 0));
+        NodePositionList<String> B_tipo = B();
+        equipara(new Token(TipoToken.TYPE_PARENTESIS, (Integer) 1));
+
+        // Registrar tipos de parametros en TS
+        String[] tiposParam;
+        int numParam;
+        // Si solo tiene el elemento "vacío" significará que no recibe parametros
+        if (B_tipo.size() == 1 && B_tipo.first().element().equals("vacío")) {
+            tiposParam = new String[0];
+            numParam = 0;
+        } else {
+            tiposParam = listaToStrings(B_tipo);
+            numParam = tiposParam.length;
+        }
+        gestorTs.setValorAtributoEnt(idPos, ATR_NUM_PARAM, numParam);
+        gestorTs.setValorAtributoLista(idPos, ATR_TIPO_PARAM, tiposParam);
+
+        // --Cuerpo--
+        equipara(new Token(TipoToken.TYPE_LLAVE, (Integer) 0));
+        Pair<String, String> C_par = C();
+        equipara(new Token(TipoToken.TYPE_LLAVE, (Integer) 1));
+        // imprimo tabla local
+        int res = gestorTs.write(TS_Gestor.Tabla.LOCAL);
+        if (res != 0) {
+            System.out.println("Error al intentar escribir la tabla local en el fichero");
+        }
+        // destruir TS local + volver global + estamos fuera de funcion
+        gestorTs.destroy(TS_Gestor.Tabla.LOCAL);
+        enFuncion = false;
+
+        String C_ret = C_par.getRight();
+
+        // Miro si ha retornado algo
+        if (!"tipo_ok".equals(C_ret)) {
+            // SI returnea, miro si mi funcion era void
+            if ("vacío".equals(H_tipo)) {
+                // función void: solo puede retornar vacío (o nada)
+                if (!"vacío".equals(C_ret)) {
+                    errSem("Return en metodo (función void)",
+                            "La funcion es tipo void y se ha returnado tipo " + C_ret);
+                }
+            } else {
+                // función no void: return expr debe coincidir con H_tipo
+                if (!H_tipo.equals(C_ret)) {
+                    errSem("Return tipo en función incorrecto",
+                            "La funcion " + idLex + " es tipo " + H_tipo + " y se ha returnado tipo " + C_ret);
+                }
+            }
+        }
+    }
+
+    /**
+     * Funcion para el analisis de la produccion E.
+     * 
+     * @return E.tipo
+     */
+    private String E() {
+
+        String E_tipo;
+        String E1_tipo;
+        String E_AND_tipo;
+
+        // 5. E -> E1 E_AND
+        if (type == TipoToken.TYPE_NEGACION || type == TipoToken.TYPE_IDENTIFICADOR ||
+                type == TipoToken.TYPE_PARENTESIS || type == TipoToken.TYPE_CADENA ||
+                type == TipoToken.TYPE_ENTERO || type == TipoToken.TYPE_REAL) {
+            parse = parse.concat("5 ");
+            E1_tipo = E1();
+            E_AND_tipo = E_AND();
+
+            // Accion Semantica
+            if (E_AND_tipo.equals("tipo_ok")) {
+                E_tipo = E1_tipo;
+            } else {
+                if (!(E1_tipo.equals("lógico")))
+                    errSem("Error lógico", "Solo se puede comparar lógicos");
+
+                if (!(E_AND_tipo.equals("lógico")))
+                    errSem("Error lógico", "No se puede comparar tipo " + E1_tipo + "y " + E_AND_tipo);
+
+                E_tipo = "lógico";
+            }
+        } else
+            throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, columna, lineaSF, columnaSF,
+                    "Se esperaba el inicio de una expresión (E)", token.getTipo(),
+                    "NEGACION, ID, PARENTESIS(ABIERTO), CADENA, ENTERO, REAL", codigoFuente, token.getLex());
+
+        return E_tipo;
+    }
+
+    /**
+     * Funcion para el analisis de la produccion E_AND.
+     * 
+     * @return E_AND.tipo
+     */
+    private String E_AND() {
+
+        String E_AND_tipo;
+        String E1_tipo;
+        String E_AND1_tipo;
+
+        // 6. E_AND -> && E1 E_AND
+        if (type == TipoToken.TYPE_AND) {
+            parse = parse.concat("6 ");
+            marcaErrToken(2); // &&
+            equipara(new Token(TipoToken.TYPE_AND, (Integer) null));
+            E1_tipo = E1();
+            E_AND1_tipo = E_AND();
+
+            // Accion Semantica
+            if (!E1_tipo.equals("lógico"))
+                errSem("Error && lógico", "Solo se puede comparar lógicos");
+            // TODO: creo que esta comprobacion sobra
+            // if (!(E1_tipo.equals(E_AND1_tipo) || E_AND1_tipo.equals("tipo_ok")))
+            // throw new ErrSemantico(lineaAnterior, columnaAnterior, linea, columna,
+            // lineaSF, columnaSF,
+            // "Error && lógico", "No se puede comparar tipo " + E1_tipo + "y " +
+            // E_AND1_tipo, codigoFuente,
+            // 1);
+            E_AND_tipo = "lógico";
+
+        }
+        // 7. E_AND -> lambda | FOLLOW(E_AND) = { ")", ",", ";" }
+        else if (type == TipoToken.TYPE_PUNTO_Y_COMA || type == TipoToken.TYPE_PARENTESIS ||
+                type == TipoToken.TYPE_COMA) {
+            parse = parse.concat("7 ");
+
+            // Accion Semantica
+            E_AND_tipo = "tipo_ok";
+
+        } else
+            throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, columna, lineaSF, columnaSF,
+                    "Expresion no terminada (E_AND)", token.getTipo(), "AND, PUNTO_Y_COMA, PARENTESIS, COMA",
+                    codigoFuente, token.getLex());
+
+        return E_AND_tipo;
+    }
+
+    /**
+     * Funcion para el analisis de la produccion E1.
+     * 
+     * @return E1.tipo
+     */
+    private String E1() {
+        String E1_tipo;
+        String E2_tipo;
+        String E1_REL_tipo;
+
+        // 8. E1 -> E2 E1_REL
+        if (type == TipoToken.TYPE_NEGACION || type == TipoToken.TYPE_IDENTIFICADOR ||
+                type == TipoToken.TYPE_PARENTESIS || type == TipoToken.TYPE_CADENA ||
+                type == TipoToken.TYPE_ENTERO || type == TipoToken.TYPE_REAL) {
+            parse = parse.concat("8 ");
+            E2_tipo = E2();
+            E1_REL_tipo = E1_REL();
+
+            // Accion Semantico
+            if (E1_REL_tipo.equals("tipo_ok"))
+                E1_tipo = E2_tipo;
+            else {
+                if (!(E2_tipo.equals("real") || E2_tipo.equals("entero")))
+                    errSem("Error Relacional", "Solo se puede comparar reales ó enteros");
+
+                if (!(E2_tipo.equals(E1_REL_tipo)))
+                    errSem("Error Relacional", "No se puede comparar tipo " + E2_tipo + "y " + E1_REL_tipo);
+
+                E1_tipo = "lógico";
+            }
+        } else
+            throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, columna, lineaSF, columnaSF,
+                    "Expresión incompleta después de operador logico (E1)", token.getTipo(),
+                    "NEGACION, ID, PARENTESIS, CADENA, ENTERO, REAL", codigoFuente, token.getLex());
+
+        return E1_tipo;
+    }
+
+    /**
+     * Funcion para el analisis de la produccion E1_REL.
+     * 
+     * @return E1_REL.tipo
+     */
+    private String E1_REL() {
+        String E1_REL_tipo;
+        String E2_tipo;
+        String E1_REL1_tipo;
+
+        // 9. E1_REL -> > E2 E1_REL
+        if (token.equals(new Token(TipoToken.TYPE_RELACION, (Integer) 0))) {
+            parse = parse.concat("9 ");
+            marcaErrToken(1);// >
+            equipara(new Token(TipoToken.TYPE_RELACION, (Integer) 0));
+            E2_tipo = E2();
+            E1_REL1_tipo = E1_REL();
+
+            // Accion Semantica
+            if (!((E2_tipo.equals("real") || E2_tipo.equals("entero"))))
+                errSem("Desigualdad mayor incorrecta", "Solo se pueden comparar real ó entero");
+
+            // Si E1_REL1 es tipo_ok entonces no hay mas comparaciones encadenadas
+            if (!(E1_REL1_tipo.equals("tipo_ok")))
+                errSem("Desigualdad mayor incorrecta", "No se puede hacer encadenamientos de comparaciones ");
+
+            E1_REL_tipo = E2_tipo;
+
+        }
+        // 10. E1_REL -> < E2 E1_REL
+        else if (token.equals(new Token(TipoToken.TYPE_RELACION, (Integer) 1))) {
+            parse = parse.concat("10 ");
+            marcaErrToken(1);// <
+            equipara(new Token(TipoToken.TYPE_RELACION, (Integer) 1));
+            E2_tipo = E2();
+            E1_REL1_tipo = E1_REL();
+
+            // Accion Semantica
+            if (!((E2_tipo.equals("real") || E2_tipo.equals("entero"))))
+                errSem("Desigualdad menor incorrecta", "Solo se pueden comparar real ó entero");
+
+            // Si E1_REL1 es tipo_ok entonces no hay mas comparaciones encadenadas
+            if (!(E1_REL1_tipo.equals("tipo_ok")))
+                errSem("Desigualdad menor incorrecta", "No se puede hacer encadenamientos de comparaciones ");
+
+            E1_REL_tipo = E2_tipo;
+
+        }
+        // 11. E1_REL -> lambda | FOLLOW(E1_REL) = { "&&", ")", ",", ";" }
+        else if (type == TipoToken.TYPE_AND || type == TipoToken.TYPE_PARENTESIS ||
+                type == TipoToken.TYPE_COMA || type == TipoToken.TYPE_PUNTO_Y_COMA) {
+            parse = parse.concat("11 ");
+
+            // Accion Semantica
+            E1_REL_tipo = "tipo_ok";
+        } else
+            throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, columna, lineaSF, columnaSF,
+                    "Expresion no terminada (E1_REL)", token.getTipo(), ">, <, AND, ) , COMA, PUNTO_Y_COMA",
+                    codigoFuente, token.getLex());
+
+        return E1_REL_tipo;
+    }
+
+    /**
+     * Funcion para el analisis de la produccion E2.
+     * 
+     * @return E2.tipo
+     */
+    private String E2() {
+        String E2_tipo;
+        String E3_tipo;
+        String E2_ARIT_tipo;
+
+        // 12. E2 -> E3 E2_ARIT
+        if (type == TipoToken.TYPE_NEGACION || type == TipoToken.TYPE_IDENTIFICADOR ||
+                type == TipoToken.TYPE_PARENTESIS || type == TipoToken.TYPE_CADENA ||
+                type == TipoToken.TYPE_ENTERO || type == TipoToken.TYPE_REAL) {
+            parse = parse.concat("12 ");
+            E3_tipo = E3();
+            E2_ARIT_tipo = E2_ARIT();
+
+            // Accion Semantica
+            if (E2_ARIT_tipo.equals("tipo_ok"))
+                E2_tipo = E3_tipo;
+            else {
+                if (!(E3_tipo.equals("real") || E3_tipo.equals("entero")))
+                    errSem("Error aritmetico", "Solo puede sumar o restar reales ó enteros");
+
+                if (!(E2_ARIT_tipo.equals(E3_tipo)))
+                    errSem("Error aritmetico", "No hay conversion de tipos entre " + E3_tipo + " y " + E2_ARIT_tipo);
+
+                E2_tipo = E3_tipo;
+            }
+
+        } else
+            throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, columna, lineaSF, columnaSF,
+                    "Expresión aritmética incompleta (E2)", token.getTipo(),
+                    "NEGACION, ID, PARENTESIS, CADENA, ENTERO, REAL", codigoFuente, token.getLex());
+
+        return E2_tipo;
+    }
+
+    /**
+     * Funcion para el analisis de la produccion E2_ARIT.
+     * 
+     * @return E2_ARIT.tipo
+     */
+    private String E2_ARIT() {
+        String E2_ARIT_tipo;
+        String E3_tipo;
+        String E2_ARIT1_tipo;
+
+        // 13. E2_ARIT -> + E3 E2_ARIT
+        if (token.equals(new Token(TipoToken.TYPE_ARITMETICO, (Integer) 0))) {
+            parse = parse.concat("13 ");
+            marcaErrToken(1); // +
+            equipara(new Token(TipoToken.TYPE_ARITMETICO, (Integer) 0));
+            E3_tipo = E3();
+            E2_ARIT1_tipo = E2_ARIT();
+
+            // Accion Semantica
+            if (!((E3_tipo.equals("real") || E3_tipo.equals("entero"))))
+                errSem("Suma incorrecta", "Solo se pueden sumar real ó entero");
+
+            // Si E2_ARIT es tipo_ok entonces no hay mas sumas encadenadas
+            if (!(E2_ARIT1_tipo.equals(E3_tipo) || E2_ARIT1_tipo.equals("tipo_ok")))
+                errSem("Suma incorrecta", "No hay conversion de tipos entre " + E2_ARIT1_tipo + " y " + E3_tipo);
+
+            E2_ARIT_tipo = E3_tipo;
+
+        }
+        // 14. E2_ARIT -> - E3 E2_ARIT
+        else if (token.equals(new Token(TipoToken.TYPE_ARITMETICO, (Integer) 1))) {
+            parse = parse.concat("14 ");
+            marcaErrToken(1); // -
+            equipara(new Token(TipoToken.TYPE_ARITMETICO, (Integer) 1));
+            E3_tipo = E3();
+            E2_ARIT1_tipo = E2_ARIT();
+
+            // Accion Semantica
+            if (!((E3_tipo.equals("real") || E3_tipo.equals("entero"))))
+                errSem("Resta incorrecta", "Solo se pueden restar real ó entero");
+
+            // Si E2_ARIT es tipo_ok entonces no hay mas restas encadenadas
+            if (!(E2_ARIT1_tipo.equals(E3_tipo) || E2_ARIT1_tipo.equals("tipo_ok")))
+                errSem("Resta incorrecta", "No hay conversion de tipos entre " + E2_ARIT1_tipo + " y " + E3_tipo);
+
+            E2_ARIT_tipo = E3_tipo;
+
+        }
+        // 15. E2_ARIT -> lambda | FOLLOW(E2_ARIT) = { ">", "<", "&&", ")", ",", ";" }
+        else if (type == TipoToken.TYPE_AND || type == TipoToken.TYPE_PARENTESIS ||
+                type == TipoToken.TYPE_COMA || type == TipoToken.TYPE_PUNTO_Y_COMA ||
+                type == TipoToken.TYPE_RELACION) {
+            parse = parse.concat("15 ");
+
+            // Accion Semantica
+            E2_ARIT_tipo = "tipo_ok";
+        } else
+            throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, columna, lineaSF, columnaSF,
+                    "Expresion no terminada (E2_ARIT)", token.getTipo(),
+                    "ARITMETICO, AND, PARENTESIS, COMA, PUNTO_Y_COMA, RELACION", codigoFuente, token.getLex());
+
+        return E2_ARIT_tipo;
+    }
+
+    /**
+     * Funcion para el analisis de la produccion E3.
+     * 
+     * @return E3.tipo
+     */
+    private String E3() {
+        String E3_tipo;
+        String E31_tipo;
+        String E_tipo;
+        NodePositionList<String> E4_tipo;
+
+        // 16. E3 -> ! E3
+        if (type == TipoToken.TYPE_NEGACION) {
+            parse = parse.concat("16 ");
+            marcaErrToken(1); // !
+            equipara(new Token(TipoToken.TYPE_NEGACION, (Integer) null));
+            E31_tipo = E3();
+
+            // Accion Semantica
+            if (!E31_tipo.equals("lógico"))
+                errSem("Negación incorrecta",
+                        "Solo se puede negar una expresión lógica; y se esta intentando negar una expresión tipo ");
+
+            E3_tipo = "lógico";
+        }
+
+        // 17. E3 -> id E4
+        else if (type == TipoToken.TYPE_IDENTIFICADOR) {
+            parse = parse.concat("17 ");
+
+            marcaErrLexema();
+            boolean esLlamada = tokenSig != null &&
+                    tokenSig.equals(new Token(TipoToken.TYPE_PARENTESIS, (Integer) 0)); // '('
+
+            // Capturo datos del id
+            String idLex = token.getLex();
+            int idPos;
+
+            if (!esLlamada) {
+                // variable
+                idPos = aseguraVarImpl(idLex);
+            } else {
+                // Compruebo que ya sea una funcion declarada
+                idPos = gestorTs.getEntradaTSGlobal(idLex);
+                if (idPos == 0) {
+                    errSem("Función no declarada previamente",
+                            "La funcion " + idLex + " no esta declarado y no se puede declarar implicitamente");
+                }
+            }
+            token.setAtributo(idPos);
+            token.setPos(idPos);
+            equipara(new Token(TipoToken.TYPE_IDENTIFICADOR, (Integer) null));
+            E4_tipo = E4();
+
+            if (!esLlamada) {
+                String idTipo = gestorTs.getTipo(idPos);
+                E3_tipo = idTipo;
+            } else {
+
+                // Compruebo lista de parametros
+                String[] args = (E4_tipo.size() == 1 && E4_tipo.first().element().equals("vacío")) ? new String[0]
+                        : listaToStrings(E4_tipo);
+                String[] paramTypes = gestorTs.getValorAtributoLista(idPos, ATR_TIPO_PARAM);
+                if (paramTypes == null)
+                    paramTypes = new String[0];
+                boolean ok = paramTypes.length == args.length;
+                if (!ok)
+                    errSem("Número de parametros incorrectos",
+                            "La funcion pide " + paramTypes.length + " y se han introducido " + args.length);
+
+                int i;
+                for (i = 0; i < args.length && ok; i++)
+                    if (!args[i].equals(paramTypes[i]))
+                        ok = false;
+                if (!ok)
+                    errSem("Parametros de función incorrectos",
+                            "Parametros introducidos: " + paramCadena(args) + "\nParametros pedidos: "
+                                    + paramCadena(paramTypes) + "\nPrimera no coincidencia: " + i);
+
+                E3_tipo = gestorTs.getValorAtributoCad(idPos, ATR_TIPO_RET);
+            }
+        }
+
+        // 18. E3 -> ( E )
+        else if (token.equals(new Token(TipoToken.TYPE_PARENTESIS, (Integer) 0))) {
+            parse = parse.concat("18 ");
+            equipara(new Token(TipoToken.TYPE_PARENTESIS, (Integer) 0));
+            E_tipo = E();
+
+            // Accion Semantica
+            E3_tipo = E_tipo;
+
+            equipara(new Token(TipoToken.TYPE_PARENTESIS, (Integer) 1));
+        }
+        // 19. E3 -> cadena
+        else if (type == TipoToken.TYPE_CADENA) {
+            parse = parse.concat("19 ");
+            equipara(new Token(TipoToken.TYPE_CADENA, (Integer) null));
+
+            // Accion Semantica
+            E3_tipo = "cadena";
+
+        }
+        // 20. E3 -> entero
+        else if (type == TipoToken.TYPE_ENTERO) {
+            parse = parse.concat("20 ");
+            equipara(new Token(TipoToken.TYPE_ENTERO, (Integer) null));
+
+            // Accion Semantica
+            E3_tipo = "entero";
+
+        }
+        // 21. E3 -> real
+        else if (type == TipoToken.TYPE_REAL) {
+            parse = parse.concat("21 ");
+            equipara(new Token(TipoToken.TYPE_REAL, (Integer) null));
+
+            // Accion Semantica
+            E3_tipo = "real";
+
+        } else
+            throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, columna, lineaSF, columnaSF,
+                    "Elemento de expresión no válido o incompleto. (E3)", token.getTipo(),
+                    "NEGACION, ID, PARENTESIS, CADENA, ENTERO, REAL", codigoFuente, token.getLex());
+
+        return E3_tipo;
+    }
+
+    /**
+     * Funcion para el analisis de la produccion E4.
+     * 
+     * @return Lista de tipos
+     */
+    private NodePositionList<String> E4() {
+
+        NodePositionList<String> E4_tipo;
+        NodePositionList<String> L_tipo;
+
+        // 22. E4 -> ( L )
+        if (token.equals(new Token(TipoToken.TYPE_PARENTESIS, (Integer) 0))) {
+            parse = parse.concat("22 ");
+            marcaErrToken(1); // (
+            equipara(new Token(TipoToken.TYPE_PARENTESIS, (Integer) 0));
+            L_tipo = L();
+
+            // Accion Semantica
+            E4_tipo = new NodePositionList<>(L_tipo);
+
+            equipara(new Token(TipoToken.TYPE_PARENTESIS, (Integer) 1));
+        }
+        // 23. E4 -> lambda | FOLLOW(E4) = { "+", "-", ">", "<", "&&", ")", ",", ";" }
+        else if (type == TipoToken.TYPE_AND || token.equals(new Token(TipoToken.TYPE_PARENTESIS, (Integer) 1)) ||
+                type == TipoToken.TYPE_COMA || type == TipoToken.TYPE_PUNTO_Y_COMA ||
+                type == TipoToken.TYPE_RELACION || type == TipoToken.TYPE_ARITMETICO) {
+            parse = parse.concat("23 ");
+
+            // Accion Semantica
+            E4_tipo = new NodePositionList<>();
+            E4_tipo.addLast("vacío"); // Para simbolizar la no llamada a funcion, pongo un solo elemento "vacío"
+        } else
+            throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, columna, lineaSF, columnaSF,
+                    "Después del identificador se esperaba una llamada a función '(...)' o nada (E4)", token.getTipo(),
+                    "PARENTESIS, AND, COMA, PUNTO_Y_COMA, RELACION, ARITMETICO", codigoFuente, token.getLex());
+
+        return E4_tipo;
+    }
+
+    /**
+     * Funcion para el analisis de la producion S_SIMPLE.
+     * 
+     * @return S_SIMPLE.tipo y S_SIMPLE.ret (ambos Strings)
+     */
+    private Pair<String, String> S_SIMPLE() {
+        String S_SIMPLE_tipo;
+        NodePositionList<String> ASIGFUN_tipo;
+        String S_SIMPLE_ret;
+        String idTipo;
+        int idPos = 0;
+        String E_tipo;
+        String X_tipo;
+
+        marcaInicioSentencia(); // Checkpoint para CONTEXTO del error
+
+        // 26. S_SIMPLE -> id ASIGFUN
+        if (type == TipoToken.TYPE_IDENTIFICADOR) {
+            parse = parse.concat("26 ");
+
+            marcaErrLexema(); // id
+            String idLex = token.getLex();
+
+            boolean esAsignacion = tokenSig != null && tokenSig.getTipo() == TipoToken.TYPE_ASIGNACION;
+            boolean esLlamada = tokenSig != null && tokenSig.equals(new Token(TipoToken.TYPE_PARENTESIS, (Integer) 0));
+
+            // tactica looking ahead
+            if (esAsignacion) {
+                // id es VARIABLE
+                idPos = aseguraVarImpl(idLex);
+
+            } else if (esLlamada) {
+                // id es FUNCIÓN
+                idPos = gestorTs.getEntradaTSGlobal(idLex);
+                // Debe ser una llamada a función y esta tiene que estar declarada
+                if (idPos == 0) {
+                    errSem("Función no declarada previamente",
+                            "La funcion " + idLex + " no esta declarado y no se puede declarar implicitamente");
+                }
+            }
+            // si el siguiente token no es ninguno de los dos esperados, dejo pasar el id
+            // como 0 pq totalmente ASIGFUN seguro que da error
+            token.setAtributo(idPos);
+            token.setPos(idPos);
+            equipara(new Token(TipoToken.TYPE_IDENTIFICADOR, (Integer) null));
+
+            ASIGFUN_tipo = ASIGFUN();
+            if (esAsignacion) {
+                idTipo = gestorTs.getTipo(idPos);
+
+                String asigTipo = ASIGFUN_tipo.first().element();
+                if (!asigTipo.equals(idTipo))
+                    errSem("Asignacion incorrecta",
+                            "El tipo de " + idLex + " (" + idTipo + ") es incompatible con el tipo de asignacion "
+                                    + "(" + asigTipo + ")");
+                S_SIMPLE_tipo = "tipo_ok";
+            } else {
+                // Compruebo lista de parametros
+                String[] args = (ASIGFUN_tipo.size() == 1 && ASIGFUN_tipo.first().element().equals("vacío"))
+                        ? new String[0]
+                        : listaToStrings(ASIGFUN_tipo);
+                String[] paramTypes = gestorTs.getValorAtributoLista(idPos, ATR_TIPO_PARAM);
+                if (paramTypes == null)
+                    paramTypes = new String[0]; // Esto es innecesario si meto bien siempre la lista de param
+                boolean ok = paramTypes.length == args.length;
+                if (!ok)
+                    errSem("Número de parametros incorrectos",
+                            "La funcion pide " + paramTypes.length + " y se han introducido " + args.length);
+
+                int i;
+                for (i = 0; i < args.length && ok; i++)
+                    if (!args[i].equals(paramTypes[i]))
+                        ok = false;
+                if (!ok)
+                    errSem("Parametros de función incorrectos",
+                            "Parametros introducidos: " + paramCadena(args) + "\nParametros pedidos: "
+                                    + paramCadena(paramTypes) + "\nPrimera no coincidencia es el param. num. " + i);
+
+                S_SIMPLE_tipo = "tipo_ok";
+            }
+            S_SIMPLE_ret = "tipo_ok";
+        }
+        // 27. S_SIMPLE -> write E ;
+        else if (type == TipoToken.TYPE_WRITE) {
+            parse = parse.concat("27 ");
+            marcaPal("write");
+            equipara(new Token(TipoToken.TYPE_WRITE, (Integer) null));
+            E_tipo = E();
+
+            equipara(new Token(TipoToken.TYPE_PUNTO_Y_COMA, (Integer) null));
+
+            // Accion Semantica
+            if (!("real".equals(E_tipo) ||
+                    "entero".equals(E_tipo) ||
+                    "cadena".equals(E_tipo)))
+                errSem("Error en write",
+                        "Write solo acepta real, entero o cadena (has introducido tipo " + E_tipo + ")");
+
+            S_SIMPLE_tipo = "tipo_ok";
+            S_SIMPLE_ret = "tipo_ok";
+
+        } // 28. S_SIMPLE -> read id ;
+        else if (type == TipoToken.TYPE_READ) {
+            parse = parse.concat("28 ");
+            equipara(new Token(TipoToken.TYPE_READ, (Integer) null));
+            String idLex = token.getLex(); // capturo datos de id
+
+            marcaErrLexema();
+
+            // la variable puede ser implicita
+            idPos = aseguraVarImpl(idLex);
+            idTipo = gestorTs.getTipo(idPos);
+
+            if (!("real".equals(idTipo) ||
+                    "entero".equals(idTipo) ||
+                    "cadena".equals(idTipo)))
+                errSem("Error en read", "Read solo acepta real, entero o cadena (has introducido tipo " + idTipo + ")");
+
+            token.setAtributo(idPos);
+            token.setPos(idPos);
+            equipara(new Token(TipoToken.TYPE_IDENTIFICADOR, (Integer) null));
+            equipara(new Token(TipoToken.TYPE_PUNTO_Y_COMA, (Integer) null));
+
+            S_SIMPLE_tipo = "tipo_ok";
+            S_SIMPLE_ret = "tipo_ok";
+        } // 29. S_SIMPLE -> return X ;
+        else if (type == TipoToken.TYPE_RETURN) {
+            parse = parse.concat("29 ");
+            marcaPal("return");
+            equipara(new Token(TipoToken.TYPE_RETURN, (Integer) null));
+            X_tipo = X();
+            equipara(new Token(TipoToken.TYPE_PUNTO_Y_COMA, (Integer) null));
+
+            // Accion Semantica
+            S_SIMPLE_tipo = "tipo_ok";
+            S_SIMPLE_ret = X_tipo;
+
+        } else
+            throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, columna, lineaSF, columnaSF,
+                    "Sentencia simple mal formada (S_SIMPLE)", token.getTipo(), "ID, WRITE, READ, RETURN", codigoFuente,
+                    token.getLex());
+
+        return new Pair<String, String>(S_SIMPLE_tipo, S_SIMPLE_ret);
+    }
+
+    /**
+     * Funcion para el analisis de la produccion S_COMPUESTA.
+     * 
+     * @return S_COMPUESTA.tipo y S_COMPUESTA.ret
+     */
+    private Pair<String, String> S_COMPUESTA() {
+        String S_COMPUESTA_tipo;
+        String S_COMPUESTA_ret;
+        String T_tipo;
+        String E_tipo;
+        String S_SIMPLE_tipo;
+        String S_SIMPLE_ret;
+        // TODO: creo que esto sobra
+        String INI_tipo;
+        String ACTU_tipo;
+        String C_tipo;
+        String C_ret;
+
+        marcaInicioSentencia(); // Checkpoint para CONTEXTO del error
+
+        // 40. S_COMPUESTA -> let T id ;
+        if (type == TipoToken.TYPE_LET) {
+            parse = parse.concat("40 ");
+            equipara(new Token(TipoToken.TYPE_LET, (Integer) null));
+
+            Pair<String, Integer> tPar = T(); // Obtenemos tipo y anchura de tipo
+
+            T_tipo = tPar.getLeft();
+            int T_anchura = tPar.getRight();
+            String idLex = token.getLex();
+            int idPos;
+            marcaErrLexema();
+
+            // meto variable en TS
+            if (enFuncion) {
+                // Compruebo si ya existe en local
+                int posLocal = gestorTs.getEntradaTSLocal(idLex);
+                if (posLocal != 0) {
+                    errSem("Error de redeclaración de variable",
+                            "La variable " + idLex + " ya esta declarado como " + gestorTs.getTipo(posLocal)
+                                    + " y no admite Error de redeclaración");
+                }
+
+                posLocal = gestorTs.addEntradaTSLocal(idLex); // NEGATIVO
+                gestorTs.setTipo(posLocal, T_tipo);
+                gestorTs.setValorAtributoEnt(posLocal, ATR_DIR, despLoc);
+                gestorTs.setValorAtributoEnt(posLocal, ATR_PARAM, 0);
+                despLoc += T_anchura;
+                idPos = posLocal;
+            } else {
+                // Compruebo si ya existe en global
+                int posG = gestorTs.getEntradaTSGlobal(idLex);
+                if (posG != 0 && gestorTs.getTipo(posG) != null) {
+                    errSem("Error de redeclaración de variable",
+                            "La variable " + idLex + " ya esta declarado como " + gestorTs.getTipo(posG)
+                                    + " y no admite Error de redeclaración");
+                }
+
+                // id a la TSGlobal bien (posible comprobacion innecesaria)
+                if (posG == 0)
+                    posG = gestorTs.addEntradaTSGlobal(idLex);
+
+                gestorTs.setTipo(posG, T_tipo);
+                gestorTs.setValorAtributoEnt(posG, ATR_DIR, despGlob);
+                gestorTs.setValorAtributoEnt(posG, ATR_PARAM, 0);
+                despGlob += T_anchura;
+                idPos = posG;
+            }
+            token.setAtributo(idPos);
+            token.setPos(idPos);
+            equipara(new Token(TipoToken.TYPE_IDENTIFICADOR, (Integer) null));
+            equipara(new Token(TipoToken.TYPE_PUNTO_Y_COMA, (Integer) null)); // TODO: esto era necesario?
+
+            S_COMPUESTA_tipo = "tipo_ok";
+            S_COMPUESTA_ret = "tipo_ok";
+        }
+        // 41. S_COMPUESTA -> if ( E ) S_SIMPLE
+        else if (type == TipoToken.TYPE_IF) {
+            parse = parse.concat("41 ");
+            marcaPal("if");
+            equipara(new Token(TipoToken.TYPE_IF, (Integer) null));
+            equipara(new Token(TipoToken.TYPE_PARENTESIS, (Integer) 0));
+            E_tipo = E();
+            equipara(new Token(TipoToken.TYPE_PARENTESIS, (Integer) 1));
+            Pair<String, String> par = S_SIMPLE();
+            S_SIMPLE_tipo = par.getLeft();
+            S_SIMPLE_ret = par.getRight();
+
+            // Accion Semantica
+            if (!E_tipo.equals("lógico"))
+                errSem("Ausencia lógica en IF",
+                        "El tipo " + E_tipo + " no sirve como condicion para el if (solo acepta lógico)");
+
+            S_COMPUESTA_tipo = S_SIMPLE_tipo;
+            S_COMPUESTA_ret = S_SIMPLE_ret;
+
+        }
+        // 42. S_COMPUESTA -> for ( INI ; E ; ACTU ) { C }
+        else if (type == TipoToken.TYPE_FOR) {
+            parse = parse.concat("42 ");
+            marcaPal("for");
+            equipara(new Token(TipoToken.TYPE_FOR, (Integer) null));
+            equipara(new Token(TipoToken.TYPE_PARENTESIS, (Integer) 0));
+            INI();
+            equipara(new Token(TipoToken.TYPE_PUNTO_Y_COMA, (Integer) null));
+            marcaErrToken(1);
+            E_tipo = E();
+            equipara(new Token(TipoToken.TYPE_PUNTO_Y_COMA, (Integer) null));
+            ACTU();
+            equipara(new Token(TipoToken.TYPE_PARENTESIS, (Integer) 1));
+            equipara(new Token(TipoToken.TYPE_LLAVE, (Integer) 0));
+            Pair<String, String> par = C();
+            C_tipo = par.getLeft();
+            C_ret = par.getRight();
+            equipara(new Token(TipoToken.TYPE_LLAVE, (Integer) 1));
+
+            // Accion Semantica
+            S_COMPUESTA_tipo = C_tipo;
+
+            S_COMPUESTA_ret = C_ret;
+
+        } else
+            throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, columna, lineaSF, columnaSF,
+                    "Sentencia compuesta incompleta o mal escrita (S_COMPUESTA)", token.getTipo(), "LET, IF, FOR",
+                    codigoFuente, token.getLex());
+
+        return new Pair<String, String>(S_COMPUESTA_tipo, S_COMPUESTA_ret);
+    }
+
+    /**
+     * Funcion para el analisis de la produccion ASIGFUN.
+     * 
+     * @return Lista de tipos (si es asignacion -> un solo tipo)
+     */
+    private NodePositionList<String> ASIGFUN() {
+        NodePositionList<String> ASIGFUN_tipo;
+        NodePositionList<String> L_tipo;
+        String A_tipo;
+        String E_tipo;
+
+        // 30. ASIGFUN -> A E ;
+        if (token.getTipo() == TipoToken.TYPE_ASIGNACION) {
+            parse = parse.concat("30 ");
+            A_tipo = A();
+            E_tipo = E();
+            equipara(new Token(TipoToken.TYPE_PUNTO_Y_COMA, (Integer) null));
+
+            // Accion Semantica
+            ASIGFUN_tipo = new NodePositionList<>();
+            if (A_tipo.equals("lógico") && E_tipo.equals("lógico") ||
+                    A_tipo.equals("tipo_ok")) {
+                ASIGFUN_tipo.addLast(E_tipo);
+            } else
+                errSem("Asignacion lógica incorrecta",
+                        "La asignación lógica (|=) solo acepta expresiones lógicas (se introdujo tipo " + E_tipo + ")");
+            ;
+
+        }
+        // 31. ASIGFUN -> ( L ) ;
+        else if (token.equals(new Token(TipoToken.TYPE_PARENTESIS, (Integer) 0))) {
+            parse = parse.concat("31 ");
+            equipara(new Token(TipoToken.TYPE_PARENTESIS, (Integer) 0));
+            L_tipo = L();
+            equipara(new Token(TipoToken.TYPE_PARENTESIS, (Integer) 1));
+            equipara(new Token(TipoToken.TYPE_PUNTO_Y_COMA, (Integer) null));
+
+            // Accion Semantica
+            ASIGFUN_tipo = new NodePositionList<>(L_tipo);
+
+        } else
+            throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, columna, lineaSF, columnaSF,
+                    "Se esperaba una asignación '= expr;' o una llamada a función '(...)' (ASIGFUN)", token.getTipo(),
+                    "ASIGNACION, PARENTESIS", codigoFuente, token.getLex());
+
+        return ASIGFUN_tipo;
+    }
+
+    /**
+     * Funcion para el analisis de la produccion A.
+     * 
+     * @return A.tipo
+     */
+    private String A() {
+        String A_tipo;
+
+        // 32. A -> =
+        if (token.equals(new Token(TipoToken.TYPE_ASIGNACION, (Integer) 0))) {
+            parse = parse.concat("32 ");
+            marcaErrToken(1);
+            equipara(new Token(TipoToken.TYPE_ASIGNACION, (Integer) 0));
+
+            // Accion Semantica
+            A_tipo = "tipo_ok";
+
+        } // 33. A -> |=
+        else if (token.equals(new Token(TipoToken.TYPE_ASIGNACION, (Integer) 1))) {
+            parse = parse.concat("33 ");
+            marcaErrToken(2);
+            equipara(new Token(TipoToken.TYPE_ASIGNACION, (Integer) 1));
+
+            // Accion Semantica
+            A_tipo = "lógico";
+
+        } else
+            throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, columna, lineaSF, columnaSF,
+                    "Se esperaba un operador de asignación (= o |=) (A)", token.getTipo(), "ASGINACION", codigoFuente,
+                    token.getLex());
+
+        return A_tipo;
+    }
+
+    /**
+     * Funcion para el analisis de la produccion L.
+     * 
+     * @return Lista de tipos (Es el comienzo, le sigue Q)
+     */
+    private NodePositionList<String> L() {
+        NodePositionList<String> L_tipo;
+        NodePositionList<String> Q_tipo;
+        String E_tipo;
+
+        // 34. L -> E Q
+        if (type == TipoToken.TYPE_NEGACION || type == TipoToken.TYPE_IDENTIFICADOR ||
+                type == TipoToken.TYPE_CADENA || type == TipoToken.TYPE_ENTERO || type == TipoToken.TYPE_REAL ||
+                token.equals(new Token(TipoToken.TYPE_PARENTESIS, (Integer) 0))) {
+            parse = parse.concat("34 ");
+            E_tipo = E();
+            Q_tipo = Q();
+
+            // Accion Semantica
+            L_tipo = new NodePositionList<>();
+            L_tipo.addLast(E_tipo);
+            for (String t : Q_tipo)
+                L_tipo.addLast(t);
+
+        } // 35. L -> lambda FOLLOW(L) = {")"}
+        else if (token.equals(new Token(TipoToken.TYPE_PARENTESIS, (Integer) 1))) {
+            parse = parse.concat("35 ");
+
+            // Accion Semantica
+            L_tipo = new NodePositionList<String>();
+
+        } else
+            throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, columna, lineaSF, columnaSF,
+                    "Lista de argumentos mal formada (L)", token.getTipo(),
+                    "NEGACION, ID, PARENTESIS, CADENA, ENTERO, REAL", codigoFuente, token.getLex());
+
+        return L_tipo;
+    }
+
+    /**
+     * Funcion para el analisis de la produccion Q.
+     * 
+     * @return Lista de tipos (Es la continuacion de L)
+     */
+    private NodePositionList<String> Q() {
+        NodePositionList<String> Q_tipo;
+        NodePositionList<String> Q1_tipo;
+        String E_tipo;
+
+        // 36. Q -> , E Q
+        if (type == TipoToken.TYPE_COMA) {
+            parse = parse.concat("36 ");
+            equipara(new Token(TipoToken.TYPE_COMA, (Integer) null));
+            E_tipo = E();
+            Q1_tipo = Q();
+
+            // Accion Semantica
+            Q_tipo = new NodePositionList<>();
+            Q_tipo.addLast(E_tipo);
+            for (String t : Q1_tipo)
+                Q_tipo.addLast(t);
+
+        } // 37. Q -> lambda FOLLOW(Q) = {")"}
+        else if (token.equals(new Token(TipoToken.TYPE_PARENTESIS, (Integer) 1))) {
+            parse = parse.concat("37 ");
+
+            // Accion Semantica
+            Q_tipo = new NodePositionList<>();
+
+        } else
+            throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, columna, lineaSF, columnaSF,
+                    "Se esperaba un elemento después de la coma (Q)", token.getTipo(), "COMA, PARENTESIS", codigoFuente,
+                    token.getLex());
+
+        return Q_tipo;
+    }
+
+    /**
+     * Funcion para el analisis de la produccion X. Usado concretamente para el
+     * return (return X).
+     * 
+     * @return X.tipo.
+     */
+    private String X() {
+        String X_tipo;
+        String E_tipo;
+
+        // 38. X -> E
+        if (type == TipoToken.TYPE_NEGACION || type == TipoToken.TYPE_IDENTIFICADOR ||
+                type == TipoToken.TYPE_PARENTESIS || type == TipoToken.TYPE_CADENA ||
+                type == TipoToken.TYPE_ENTERO || type == TipoToken.TYPE_REAL) {
+            parse = parse.concat("38 ");
+            E_tipo = E();
+
+            // Accion Semantica
+            X_tipo = E_tipo;
+
+        } // 39. X -> lambda && FOLLOW(X) = {";"}
+        else if (type == TipoToken.TYPE_PUNTO_Y_COMA) {
+            parse = parse.concat("39 ");
+
+            // Accion Semantica
+            X_tipo = "vacío";
+
+        } else
+            throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, columna, lineaSF, columnaSF,
+                    "Después de 'return' debe venir una expresión o un ';' (X)", token.getTipo(),
+                    "NEGACION, ID, PARENTESIS, CADENA, ENTERO, REAL, PUNTO_Y_COMA", codigoFuente, token.getLex());
+
+        return X_tipo;
+    }
+
+    /**
+     * Funcion para el analisis de la produccion T. Son los tipos de datos.
+     * 
+     * @return T.tipo y T.ancho
+     */
+    private Pair<String, Integer> T() {
+        String T_tipo;
+        Integer T_ancho;
+
+        // 43. T -> int
+        if (type == TipoToken.TYPE_INT) {
+            parse = parse.concat("43 ");
+            equipara(new Token(TipoToken.TYPE_INT, (Integer) null));
+
+            // Accion Semantica
+            T_tipo = "entero";
+            T_ancho = 1;
+
+        } // 44. T -> float
+        else if (type == TipoToken.TYPE_FLOAT) {
+            parse = parse.concat("44 ");
+            equipara(new Token(TipoToken.TYPE_FLOAT, (Integer) null));
+
+            // Accion Semantica
+            T_tipo = "real";
+            T_ancho = 2;
+
+        } // 45. T -> boolean
+        else if (type == TipoToken.TYPE_BOOLEAN) {
+            parse = parse.concat("45 ");
+            equipara(new Token(TipoToken.TYPE_BOOLEAN, (Integer) null));
+
+            // Accion Semantica
+            T_tipo = "lógico";
+            T_ancho = 1;
+
+        } // 46. T -> string
+        else if (type == TipoToken.TYPE_STRING) {
+            parse = parse.concat("46 ");
+            equipara(new Token(TipoToken.TYPE_STRING, (Integer) null));
+
+            // Accion Semantica
+            T_tipo = "cadena";
+            T_ancho = 64;
+
+        } else
+            throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, columna, lineaSF, columnaSF,
+                    "Leyendo tipo de dato (int, float, boolean, string) (T)", token.getTipo(),
+                    "INT, FLOAT, BOOLEAN, STRING", codigoFuente, token.getLex());
+
+        return new Pair<String, Integer>(T_tipo, T_ancho);
+    }
+
+    /**
+     * Funcion para el analisis de la produccion INI.
+     * 
+     * @return INI.tipo
+     */
+    private String INI() {
+        String INI_tipo;
+        String E_tipo;
+
+        marcaInicioSentencia(); // Checkpoint para CONTEXTO del error
+
+        // 47. INI -> id = E
+        if (type == TipoToken.TYPE_IDENTIFICADOR) {
+            parse = parse.concat("47 ");
+
+            String idLex = token.getLex();
+            int idPos = aseguraVarImpl(idLex);
+            String idTipo = gestorTs.getTipo(idPos);
+
+            token.setAtributo(idPos);
+            token.setPos(idPos);
+            equipara(new Token(TipoToken.TYPE_IDENTIFICADOR, (Integer) null));
+            equipara(new Token(TipoToken.TYPE_ASIGNACION, (Integer) 0));
+            E_tipo = E();
+
+            // Accion Semantica
+            if (!idTipo.equals(E_tipo))
+                errSem("Asignacion de id incorrecto",
+                        "El id tiene tipo " + idTipo + " y no es compatible con el tipo " + E_tipo);
+
+            INI_tipo = "tipo_ok";
+
+        } // 48. INI -> lambda FOLLOW(INI) = {";"}
+        else if (type == TipoToken.TYPE_PUNTO_Y_COMA) {
+            parse = parse.concat("48 ");
+
+            // Accion Semantica
+            INI_tipo = "tipo_ok";
+        } else
+            throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, columna, lineaSF, columnaSF,
+                    "Inicialización inválida en el 'for' (INI)", token.getTipo(), "ID, PUNTO_Y_COMA", codigoFuente,
+                    token.getLex());
+
+        return INI_tipo;
+    }
+
+    /**
+     * Funcion para el analisis de la produccion ACTU.
+     * 
+     * @return ACTU.tipo
+     */
+    private String ACTU() {
+        String ACTU_tipo;
+
+        marcaInicioSentencia(); // Checkpoint para CONTEXTO del error
+
+        // 49. ACTU -> id A E ;
+        if (type == TipoToken.TYPE_IDENTIFICADOR) {
+            parse = parse.concat("49 ");
+
+            String idLex = token.getLex();
+            int idPos = aseguraVarImpl(idLex);
+            String idTipo = gestorTs.getTipo(idPos);
+
+            token.setAtributo(idPos);
+            token.setPos(idPos);
+            equipara(new Token(TipoToken.TYPE_IDENTIFICADOR, (Integer) null));
+            String A_tipo = A();
+            String E_tipo = E();
+            equipara(new Token(TipoToken.TYPE_PUNTO_Y_COMA, (Integer) null));
+
+            // Accion Semantica
+            if (A_tipo.equals("tipo_ok")) {
+                if (!idTipo.equals(E_tipo))
+                    errSem("Asignación en FOR incorrecto",
+                            "El id tiene tipo " + idTipo + " y no es compatible con el tipo " + E_tipo);
+
+            } else {
+                //TODO: Esta comprobacion creo que es innecesaria
+                if (A_tipo.equals("lógico")) {
+                    if (!E_tipo.equals("lógico"))
+                        errSem("Asignacion lógico en FOR incorrecto",
+                                "La asignación lógica solo se puede aplicar a expresiones lógicas (se ha introducido tipo "
+                                        + E_tipo + ")");
+                    if (!idTipo.equals("lógico"))
+                        errSem("Asignación lógica a id en FOR incorrecto",
+                                "El identificador " + idLex + " debe ser de tipo lógico, pero es " + idTipo);
+                }
+            }
+            ACTU_tipo = "tipo_ok";
+        } // 50. ACTU -> lambda FOLLOW(ACTU) = {")"}
+        else if (token.equals(new Token(TipoToken.TYPE_PARENTESIS, (Integer) 1))) {
+            parse = parse.concat("50 ");
+            ACTU_tipo = "tipo_ok";
+        } else
+            throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, columna, lineaSF, columnaSF,
+                    "Actualización inválida en el 'for' (ACTU)", token.getTipo(), "ID, PARENTESIS", codigoFuente,
+                    token.getLex());
+
+        return ACTU_tipo;
+    }
+
+    /**
+     * Funcion para el analisis de la produccion C.
+     * 
+     * @return C.tipo y C.ret
+     */
+    private Pair<String, String> C() {
+        String C_tipo;
+        String C_ret;
+        String S_tipo;
+        String S_ret;
+        String C1_tipo;
+        String C1_ret;
+
+        // 51. C -> S C
+        if (type == TipoToken.TYPE_IDENTIFICADOR || type == TipoToken.TYPE_WRITE ||
+                type == TipoToken.TYPE_READ || type == TipoToken.TYPE_RETURN ||
+                type == TipoToken.TYPE_LET || type == TipoToken.TYPE_IF || type == TipoToken.TYPE_FOR) {
+            parse = parse.concat("51 ");
+
+            Pair<String, String> parS = S();
+            S_tipo = parS.getLeft();
+            S_ret = parS.getRight();
+            Pair<String, String> parC = C();
+            C1_tipo = parC.getLeft();
+            C1_ret = parC.getRight();
+
+            // Accion Semantica
+            // Este error nunca deberia ocurrir si los anteriores catchean bien antes (seria
+            // un error demasiado general), lo dejo para casos misteriosos
+            if (!S_tipo.equals("tipo_ok"))
+                errSem("Sentencia incorrecta en cuerpo", "La sentencia es incorrecta en anidamientos de cuerpos");
+
+            C_tipo = C1_tipo;
+
+            // Logica interesante para C_ret:
+            // Si S_ret es tipo_ok entonces no tiene "return" y por tanto depende C1_ret
+            // Si S_ret tiene return, miro si C1_ret aporta return o no, en caso que no,
+            // pues depende de S_ret (unico return) y en caso que C1_ret aporte return tb,
+            // tengo que asegurarme que sea del mismo tipo que S_ret
+            if (S_ret.equals("tipo_ok"))
+                C_ret = C1_ret;
+            else {
+                if (!(C1_ret.equals("tipo_ok") || S_ret.equals(C1_ret)))
+                    errSem("Returns incompatibles",
+                            "En el mismo bloque hay returns de tipos distintos: " + S_ret + " y " + C1_ret);
+
+                C_ret = S_ret;
+            }
+
+        } // 52. C -> lambda FOLLOW(C) = {"}"}
+        else if (token.equals(new Token(TipoToken.TYPE_LLAVE, (Integer) 1))) {
+            parse = parse.concat("52 ");
+
+            // Accion Semantica
+            C_tipo = "tipo_ok";
+            C_ret = "tipo_ok";
+
+        } else
+            throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, columna, lineaSF, columnaSF,
+                    "Bloque de código mal formado (C)", token.getTipo(), "ID, WRITE, READ, RETURN, LET, IF, FOR, LLAVE",
+                    codigoFuente, token.getLex());
+
+        return new Pair<String, String>(C_tipo, C_ret);
+    }
+
+    /**
+     * Funcion para el analisis de la produccion H.
+     * 
+     * @return H.tipo
+     */
+    private String H() {
+        String H_tipo;
+        String T_tipo;
+
+        // 54. H -> T
+        if (type == TipoToken.TYPE_INT || type == TipoToken.TYPE_FLOAT ||
+                type == TipoToken.TYPE_BOOLEAN || type == TipoToken.TYPE_STRING) {
+            parse = parse.concat("54 ");
+            Pair<String, Integer> par = T();
+            T_tipo = par.getLeft();
+
+            // Accion Semantica
+            H_tipo = T_tipo;
+
+        } // 55. H -> void
+        else if (type == TipoToken.TYPE_VOID) {
+            parse = parse.concat("55 ");
+            equipara(new Token(TipoToken.TYPE_VOID, (Integer) null));
+
+            // Accion Semantica
+            H_tipo = "vacío"; // Simbolizo que no necesito return
+
+        } else
+            throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, columna, lineaSF, columnaSF,
+                    "Se esperaba un tipo de retorno o 'void' (H)", token.getTipo(), "INT, FLOAT, BOOLEAN, STRING, VOID",
+                    codigoFuente, token.getLex());
+
+        return H_tipo;
+    }
+
+    /**
+     * Funcion para el analisis de la produccion B. Comienzo de lista param para fun
+     * en TSLocal.
+     * 
+     * @return Lista de tipos
+     */
+    private NodePositionList<String> B() {
+
+        NodePositionList<String> B_tipo = new NodePositionList<>();
+        NodePositionList<String> K_tipo;
+
+        // 56. B -> T id K
+        if (type == TipoToken.TYPE_INT || type == TipoToken.TYPE_FLOAT ||
+                type == TipoToken.TYPE_BOOLEAN || type == TipoToken.TYPE_STRING) {
+            parse = parse.concat("56 ");
+
+            Pair<String, Integer> T_par = T();
+            String T_tipo = T_par.getLeft();
+            int T_ancho = T_par.getRight();
+            String idLex = token.getLex();
+
+            // Compruebo que no se este redeclarando
+            int idPos = gestorTs.getEntradaTSLocal(idLex);
+            if (idPos != 0) {
+                errSem("Error de redeclaración de variable",
+                        "La variable " + idLex + " ya esta declarado como " + gestorTs.getTipo(idPos)
+                                + " y no admite Error de redeclaración");
+            }
+
+            // Insertar parametro en TS local
+            idPos = gestorTs.addEntradaTSLocal(idLex);
+            gestorTs.setTipo(idPos, T_tipo);
+            gestorTs.setValorAtributoEnt(idPos, ATR_DIR, despLoc);
+            gestorTs.setValorAtributoEnt(idPos, ATR_PARAM, 1);
+            despLoc += T_ancho;
+
+            token.setAtributo(idPos);
+            token.setPos(idPos);
+            equipara(new Token(TipoToken.TYPE_IDENTIFICADOR, (Integer) null));
+
+            K_tipo = K();
+            // B_tipo = T.tipo x K_tipo (si k = tipo_ok -> lambda = solo T.tipo)
+            B_tipo.addLast(T_tipo);
+            for (String tipoK : K_tipo)
+                if (!tipoK.equals("tipo_ok")) {
+                    B_tipo.addLast(tipoK);
+                }
+        } // 57. B -> void
+        else if (type == TipoToken.TYPE_VOID) {
+            parse = parse.concat("57 ");
+            equipara(new Token(TipoToken.TYPE_VOID, (Integer) null));
+            B_tipo.addLast("vacío");
+        } else
+            throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, columna, lineaSF, columnaSF,
+                    "Lista de parámetros mal formada o incompleta (B)", token.getTipo(),
+                    "INT, FLOAT, BOOLEAN, STRING, VOID", codigoFuente, token.getLex());
+
+        return B_tipo;
+    }
+
+    /**
+     * Funcion para el analisis de la produccion K. Continuacion de B en TSLocal.
+     * 
+     * @return Lista de tipos
+     */
+    private NodePositionList<String> K() {
+        NodePositionList<String> K_tipo = new NodePositionList<>();
+        NodePositionList<String> K1_tipo;
+        String T_tipo;
+        Integer T_ancho;
+
+        // 58. K -> , T id K
+        if (type == TipoToken.TYPE_COMA) {
+            parse = parse.concat("58 ");
+            equipara(new Token(TipoToken.TYPE_COMA, (Integer) null));
+
+            Pair<String, Integer> T_par = T();
+            T_tipo = T_par.getLeft();
+            T_ancho = T_par.getRight();
+            int idPos;
+            String idLex = token.getLex();
+
+            // Compruebo que no se este redeclarando
+            idPos = gestorTs.getEntradaTSLocal(idLex);
+            if (idPos != 0) {
+                errSem("Error de redeclaración de variable",
+                        "La variable " + idLex + " ya esta declarado como " + gestorTs.getTipo(idPos)
+                                + " y no admite Error de redeclaración");
+            }
+
+            idPos = gestorTs.addEntradaTSLocal(idLex);
+            gestorTs.setTipo(idPos, T_tipo);
+            gestorTs.setValorAtributoEnt(idPos, ATR_DIR, despLoc);
+            gestorTs.setValorAtributoEnt(idPos, ATR_PARAM, 1);
+            despLoc += T_ancho;
+
+            token.setAtributo(idPos);
+            token.setPos(idPos);
+            equipara(new Token(TipoToken.TYPE_IDENTIFICADOR, (Integer) null));
+
+            K1_tipo = K();
+            K_tipo.addLast(T_tipo);
+            for (String tipoK1 : K1_tipo)
+                if (!tipoK1.equals("tipo_ok")) {
+                    K_tipo.addLast(tipoK1);
+                }
+
+        } // 59. K -> lambda FOLLOW(K) = {")"}
+        else if (token.equals(new Token(TipoToken.TYPE_PARENTESIS, (Integer) 1))) {
+            parse = parse.concat("59 ");
+            K_tipo.addLast("tipo_ok");
+
+        } else
+            throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, columna, lineaSF, columnaSF,
+                    "Error en los parametros de la funcion (K)", token.getTipo(), "COMA, PARENTESIS", codigoFuente,
+                    token.getLex());
+
+        return K_tipo;
+    }
+}

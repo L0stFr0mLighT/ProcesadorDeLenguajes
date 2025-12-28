@@ -26,7 +26,7 @@ public abstract class Err extends RuntimeException {
             String texto = codigoFuente.get(linea - 1);
 
             //Imprimimos linea de forma: " xx| texto" (Espero que no haya más de 99 líneas :) )
-            mensaje += String.format("%2d| %s%n", linea, texto); //%n para nueva línea (es sinonimo de \n)
+            mensaje += String.format("%2d| %s\n", linea, texto);
 
             // Línea con el error = marcar ^
             if (linea == lineaSiguiente) {
