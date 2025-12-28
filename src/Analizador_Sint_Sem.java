@@ -109,7 +109,7 @@ public class Analizador_Sint_Sem {
     private void errSem(String contexto, String desc) {
         throw new ErrSemantico(
                 errLin, errCol, // (x,y) -> indicara la linea y columna del error
-                errLin, errCol, // donde empiezan los ^ (subrayado del error)
+                errLin, errCol-1, // donde empiezan los ^ (subrayado del error)
                 lineaSF, columnaSF, // checkpoint para el CONTEXTO del error
                 contexto,
                 desc,
@@ -139,9 +139,10 @@ public class Analizador_Sint_Sem {
      */
     private String paramCadena(String[] paramType) {
         String res = "";
-        for (int i = 0; i < paramType.length; i++){
-            res +=  paramType[i];
-            if (i+1 != paramType.length) res += " && ";
+        for (int i = 0; i < paramType.length; i++) {
+            res += paramType[i];
+            if (i + 1 != paramType.length)
+                res += " && ";
         }
         return res;
     }
@@ -215,7 +216,7 @@ public class Analizador_Sint_Sem {
         lineaAnterior = linea;
         columnaAnterior = columna;
 
-        //el siguiente pasa a ser el actual
+        // el siguiente pasa a ser el actual
         token = tokenSig;
         linea = lineaSig;
         columna = columnaSig;
@@ -277,7 +278,7 @@ public class Analizador_Sint_Sem {
                 token.getTipo() == TipoToken.TYPE_CADENA && TipoToken.TYPE_CADENA == t.getTipo() ||
                 token.equals(t)) {
 
-            //escribo token y avanzo
+            // escribo token y avanzo
             aLex.imprimirToken(token);
             nextToken();
         } else {
@@ -1499,7 +1500,8 @@ public class Analizador_Sint_Sem {
             equipara(new Token(TipoToken.TYPE_IDENTIFICADOR, (Integer) null));
             String A_tipo = A();
             String E_tipo = E();
-            equipara(new Token(TipoToken.TYPE_PUNTO_Y_COMA, (Integer) null));
+            //TODO: creo q en ACTU dentro de FOR no hace falta acabar en ; -> cambiar word (el profe no lo detecto antes por suerte xd)
+            // equipara(new Token(TipoToken.TYPE_PUNTO_Y_COMA, (Integer) null));
 
             // Accion Semantica
             if (A_tipo.equals("tipo_ok")) {
@@ -1508,7 +1510,7 @@ public class Analizador_Sint_Sem {
                             "El id tiene tipo " + idTipo + " y no es compatible con el tipo " + E_tipo);
 
             } else {
-                //TODO: Esta comprobacion creo que es innecesaria
+                // TODO: Esta comprobacion creo que es innecesaria (la mas externa)
                 if (A_tipo.equals("lógico")) {
                     if (!E_tipo.equals("lógico"))
                         errSem("Asignacion lógico en FOR incorrecto",
