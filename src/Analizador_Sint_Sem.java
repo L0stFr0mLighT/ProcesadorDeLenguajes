@@ -16,6 +16,8 @@ import java.util.List;
 //TODO: el lexer obligatoriamente tiene que insertar los pos de id? no puede hacerlo unicamnete el semantico lo de TS?
 //TODO: en el for(42) no es necesario comprobar nada pq los errores lo catchearemos antes y seran mas especificos, quitando la de E que tiene que ser log
 //TODO: en C(51) no ses necesario comprobar nada pq nunca deberia un error llegar a expandirse hasta alli
+//TODO: en contar linea no cuenta lineas de comentarios -> decidir que hacer
+//TODO: cambiar el mensaje de esperado de error sintactico de cara al usuario
 
 //NOTAS PARA RETURN
 // - "tipo_ok" -> no hubo returns (ausencia de returns)
