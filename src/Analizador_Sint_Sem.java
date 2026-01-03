@@ -12,12 +12,13 @@ import java.util.List;
 //TODO: revisar F(53) del word, creo que no hace falta guardar F.tipo
 //TODO: duda, si es una función no declarada, lo considero variable implicita y ya no? si no-> no tiene sentido requiereFunciónDeclarada
 //TODO: zonaDecl no creo que tenga sentido pq podemos declarar implicitamente siempre -> cambiar word EDT
-//TODO: en la regla E_AND(6) creo que sobra comprobar E1_AND porque siempre sera lógico y me vale con ver tipo E1 sin ver E_AND1
+//TODO: en la regla E_AND(6) creo que sobra comprobar E1_AND porque siempre sera logico y me vale con ver tipo E1 sin ver E_AND1
 //TODO: el lexer obligatoriamente tiene que insertar los pos de id? no puede hacerlo unicamnete el semantico lo de TS?
 //TODO: en el for(42) no es necesario comprobar nada pq los errores lo catchearemos antes y seran mas especificos, quitando la de E que tiene que ser log
 //TODO: en C(51) no ses necesario comprobar nada pq nunca deberia un error llegar a expandirse hasta alli
 //TODO: en contar linea no cuenta lineas de comentarios -> decidir que hacer
-//TODO: cambiar el mensaje de esperado de error sintactico de cara al usuario
+//TODO: cambiar el mensaje de esperado de error sintactico de cara al usuario y tb el codigo error (revisar si en el lexico estaba bien)
+//TODO: mirar si es necesario cambiar la forma de leer lineas
 
 //NOTAS PARA RETURN
 // - "tipo_ok" -> no hubo returns (ausencia de returns)
@@ -133,6 +134,19 @@ public class Analizador_Sint_Sem {
     }
 
     /**
+     * Función auxiliar para normalizar los tipos de entrada y salida de TS (entra lógico, sale lógico, imprime logico -> vaya  tsLib)
+     * @param tipo tipo que imprime TS
+     * @param entrada si es para setTipo o getTipo
+     * @return String normalizado
+     */
+    private String normalizarTipo(String tipo, boolean entrada){
+        String res = tipo;
+        if(entrada && "logico".equals(res)) res = "lógico";
+        if(!entrada && "lógico".equals(res)) res = "logico";
+        return res;
+    }
+
+    /**
      * Función auxiliar para generar mensaje de cadena de parametros -> lo uso para
      * imprimir una lista de parametros
      * 
@@ -180,13 +194,13 @@ public class Analizador_Sint_Sem {
 
         // si existe global, usarla
         int posG = gestorTs.getEntradaTSGlobal(lex);
-        if (posG != 0 && gestorTs.getTipo(posG) != null)
+        if (posG != 0 && normalizarTipo(gestorTs.getTipo(posG),false) != null)
             return posG; // positivo
 
         // si no existe, crear global entera implícita
         if (posG == 0)
             posG = gestorTs.addEntradaTSGlobal(lex);
-        if (gestorTs.getTipo(posG) == null)
+        if (normalizarTipo(gestorTs.getTipo(posG),false) == null)
             gestorTs.setTipo(posG, "entero");
         gestorTs.setValorAtributoEnt(posG, ATR_DIR, despGlob);
         gestorTs.setValorAtributoEnt(posG, ATR_PARAM, 0);
@@ -373,13 +387,13 @@ public class Analizador_Sint_Sem {
         marcaPal("function");
         equipara(new Token(TipoToken.TYPE_FUNCTION, (Integer) null));
 
-        String H_tipo = H(); // tipo de retorno ("entero", "real", "lógico", "cadena", "vacio")
+        String H_tipo = H(); // tipo de retorno ("entero", "real", "logico", "cadena", "vacio")
         String idLex = token.getLex();
         int idPos = gestorTs.getEntradaTSGlobal(idLex);
         // Miro que no esté ya declarada la variable
-        if (gestorTs.getTipo(idPos) != null) {
+        if (normalizarTipo(gestorTs.getTipo(idPos),false) != null) {
             errSem("Error de redeclaración de variable",
-                    "La variable " + idLex + " ya esta declarado como " + gestorTs.getTipo(idPos)
+                    "La variable " + idLex + " ya esta declarado como " + normalizarTipo(gestorTs.getTipo(idPos),false)
                             + " y no admite redeclaracion a tipo función");
         }
         // ids a la TSGlobal bien (comprobacion innecesaria ahora, pero para
@@ -477,13 +491,13 @@ public class Analizador_Sint_Sem {
             if (E_AND_tipo.equals("tipo_ok")) {
                 E_tipo = E1_tipo;
             } else {
-                if (!(E1_tipo.equals("lógico")))
-                    errSem("Error lógico", "Solo se puede comparar lógicos");
+                if (!(E1_tipo.equals("logico")))
+                    errSem("Error logico", "Solo se puede comparar lógicos");
 
-                if (!(E_AND_tipo.equals("lógico")))
-                    errSem("Error lógico", "No se puede comparar tipo " + E1_tipo + "y " + E_AND_tipo);
+                if (!(E_AND_tipo.equals("logico")))
+                    errSem("Error logico", "No se puede comparar tipo " + E1_tipo + "y " + E_AND_tipo);
 
-                E_tipo = "lógico";
+                E_tipo = "logico";
             }
         } else
             throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, columna, lineaSF, columnaSF,
@@ -513,16 +527,16 @@ public class Analizador_Sint_Sem {
             E_AND1_tipo = E_AND();
 
             // Accion Semantica
-            if (!E1_tipo.equals("lógico"))
-                errSem("Error && lógico", "Solo se puede comparar lógicos");
+            if (!E1_tipo.equals("logico"))
+                errSem("Error && logico", "Solo se puede comparar lógicos");
             // TODO: creo que esta comprobacion sobra
             // if (!(E1_tipo.equals(E_AND1_tipo) || E_AND1_tipo.equals("tipo_ok")))
             // throw new ErrSemantico(lineaAnterior, columnaAnterior, linea, columna,
             // lineaSF, columnaSF,
-            // "Error && lógico", "No se puede comparar tipo " + E1_tipo + "y " +
+            // "Error && logico", "No se puede comparar tipo " + E1_tipo + "y " +
             // E_AND1_tipo, codigoFuente,
             // 1);
-            E_AND_tipo = "lógico";
+            E_AND_tipo = "logico";
 
         }
         // 7. E_AND -> lambda | FOLLOW(E_AND) = { ")", ",", ";" }
@@ -569,11 +583,11 @@ public class Analizador_Sint_Sem {
                 if (!(E2_tipo.equals(E1_REL_tipo)))
                     errSem("Error Relacional", "No se puede comparar tipo " + E2_tipo + " y " + E1_REL_tipo);
 
-                E1_tipo = "lógico";
+                E1_tipo = "logico";
             }
         } else
             throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, columna, lineaSF, columnaSF,
-                    "Expresión incompleta después de operador lógico (E1)", token.getTipo(),
+                    "Expresión incompleta después de operador logico (E1)", token.getTipo(),
                     "NEGACION, ID, PARENTESIS, CADENA, ENTERO, REAL", codigoFuente, token.getLex());
 
         return E1_tipo;
@@ -764,11 +778,11 @@ public class Analizador_Sint_Sem {
             E31_tipo = E3();
 
             // Accion Semantica
-            if (!E31_tipo.equals("lógico"))
+            if (!E31_tipo.equals("logico"))
                 errSem("Negación incorrecta",
                         "Solo se puede negar una expresión lógica (se esta intentando negar una expresión tipo " + E31_tipo+")");
 
-            E3_tipo = "lógico";
+            E3_tipo = "logico";
         }
 
         // 17. E3 -> id E4
@@ -800,7 +814,7 @@ public class Analizador_Sint_Sem {
             E4_tipo = E4();
 
             if (!esLlamada) {
-                String idTipo = gestorTs.getTipo(idPos);
+                String idTipo = normalizarTipo(gestorTs.getTipo(idPos),false);
                 E3_tipo = idTipo;
             } else {
 
@@ -960,7 +974,7 @@ public class Analizador_Sint_Sem {
 
             ASIGFUN_tipo = ASIGFUN();
             if (esAsignacion) {
-                idTipo = gestorTs.getTipo(idPos);
+                idTipo = normalizarTipo(gestorTs.getTipo(idPos),false);
 
                 String asigTipo = ASIGFUN_tipo.first().element();
                 if (!asigTipo.equals(idTipo))
@@ -1022,7 +1036,7 @@ public class Analizador_Sint_Sem {
             marcaErrLexema();
             // la variable puede ser implicita
             idPos = aseguraVarImpl(idLex);
-            idTipo = gestorTs.getTipo(idPos);
+            idTipo = normalizarTipo(gestorTs.getTipo(idPos),false);
 
             if (!("real".equals(idTipo) ||
                     "entero".equals(idTipo) ||
@@ -1095,12 +1109,12 @@ public class Analizador_Sint_Sem {
                 int posLocal = gestorTs.getEntradaTSLocal(idLex);
                 if (posLocal != 0) {
                     errSem("Error de redeclaración de variable",
-                            "La variable " + idLex + " ya esta declarado como " + gestorTs.getTipo(posLocal)
+                            "La variable " + idLex + " ya esta declarado como " + normalizarTipo(gestorTs.getTipo(posLocal),false)
                                     + " y no admite redeclaracion a tipo "+T_tipo);
                 }
 
                 posLocal = gestorTs.addEntradaTSLocal(idLex); // NEGATIVO
-                gestorTs.setTipo(posLocal, T_tipo);
+                gestorTs.setTipo(posLocal, normalizarTipo(T_tipo,true));
                 gestorTs.setValorAtributoEnt(posLocal, ATR_DIR, despLoc);
                 gestorTs.setValorAtributoEnt(posLocal, ATR_PARAM, 0);
                 despLoc += T_anchura;
@@ -1108,9 +1122,9 @@ public class Analizador_Sint_Sem {
             } else {
                 // Compruebo si ya existe en global
                 int posG = gestorTs.getEntradaTSGlobal(idLex);
-                if (posG != 0 && gestorTs.getTipo(posG) != null) {
+                if (posG != 0 && normalizarTipo(gestorTs.getTipo(posG),false) != null) {
                     errSem("Error de redeclaración de variable",
-                            "La variable " + idLex + " ya esta declarado como " + gestorTs.getTipo(posG)
+                            "La variable " + idLex + " ya esta declarado como " + normalizarTipo(gestorTs.getTipo(posG),false)
                                     + " y no admite redeclaracion a tipo "+T_tipo);
                 }
 
@@ -1118,7 +1132,7 @@ public class Analizador_Sint_Sem {
                 if (posG == 0)
                     posG = gestorTs.addEntradaTSGlobal(idLex);
 
-                gestorTs.setTipo(posG, T_tipo);
+                gestorTs.setTipo(posG, normalizarTipo(T_tipo,true));
                 gestorTs.setValorAtributoEnt(posG, ATR_DIR, despGlob);
                 gestorTs.setValorAtributoEnt(posG, ATR_PARAM, 0);
                 despGlob += T_anchura;
@@ -1145,9 +1159,9 @@ public class Analizador_Sint_Sem {
             S_SIMPLE_ret = par.getRight();
 
             // Accion Semantica
-            if (!E_tipo.equals("lógico"))
+            if (!E_tipo.equals("logico"))
                 errSem("Ausencia lógica en IF",
-                        "El tipo " + E_tipo + " no sirve como condicion para el if (solo acepta lógico)");
+                        "El tipo " + E_tipo + " no sirve como condicion para el if (solo acepta logico)");
 
             S_COMPUESTA_tipo = S_SIMPLE_tipo;
             S_COMPUESTA_ret = S_SIMPLE_ret;
@@ -1163,9 +1177,9 @@ public class Analizador_Sint_Sem {
             equipara(new Token(TipoToken.TYPE_PUNTO_Y_COMA, (Integer) null));
             marcaErrToken(1);
             E_tipo = E();
-            if(!E_tipo.equals("lógico"))
+            if(!E_tipo.equals("logico"))
                 errSem("Condición del FOR incorrecto", 
-                        "La expresión como condicion en el FOR tiene que ser lógico (se introdujo tipo "+E_tipo+")");
+                        "La expresión como condicion en el FOR tiene que ser logico (se introdujo tipo "+E_tipo+")");
             equipara(new Token(TipoToken.TYPE_PUNTO_Y_COMA, (Integer) null));
             ACTU();
             equipara(new Token(TipoToken.TYPE_PARENTESIS, (Integer) 1));
@@ -1208,7 +1222,7 @@ public class Analizador_Sint_Sem {
 
             // Accion Semantica
             ASIGFUN_tipo = new NodePositionList<>();
-            if (A_tipo.equals("lógico") && E_tipo.equals("lógico") ||
+            if (A_tipo.equals("logico") && E_tipo.equals("logico") ||
                     A_tipo.equals("tipo_ok")) {
                 ASIGFUN_tipo.addLast(E_tipo);
             } else
@@ -1260,7 +1274,7 @@ public class Analizador_Sint_Sem {
             equipara(new Token(TipoToken.TYPE_ASIGNACION, (Integer) 1));
 
             // Accion Semantica
-            A_tipo = "lógico";
+            A_tipo = "logico";
 
         } else
             throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, columna, lineaSF, columnaSF,
@@ -1415,7 +1429,7 @@ public class Analizador_Sint_Sem {
             equipara(new Token(TipoToken.TYPE_BOOLEAN, (Integer) null));
 
             // Accion Semantica
-            T_tipo = "lógico";
+            T_tipo = "logico";
             T_ancho = 1;
 
         } // 46. T -> string
@@ -1452,7 +1466,7 @@ public class Analizador_Sint_Sem {
 
             String idLex = token.getLex();
             int idPos = aseguraVarImpl(idLex);
-            String idTipo = gestorTs.getTipo(idPos);
+            String idTipo = normalizarTipo(gestorTs.getTipo(idPos),false);
 
             token.setAtributo(idPos);
             token.setPos(idPos);
@@ -1497,7 +1511,7 @@ public class Analizador_Sint_Sem {
 
             String idLex = token.getLex();
             int idPos = aseguraVarImpl(idLex);
-            String idTipo = gestorTs.getTipo(idPos);
+            String idTipo = normalizarTipo(gestorTs.getTipo(idPos),false);
 
             token.setAtributo(idPos);
             token.setPos(idPos);
@@ -1515,14 +1529,14 @@ public class Analizador_Sint_Sem {
 
             } else {
                 // TODO: Esta comprobacion creo que es innecesaria (la mas externa)
-                if (A_tipo.equals("lógico")) {
-                    if (!E_tipo.equals("lógico"))
-                        errSem("Asignacion lógico en FOR incorrecto",
+                if (A_tipo.equals("logico")) {
+                    if (!E_tipo.equals("logico"))
+                        errSem("Asignacion logico en FOR incorrecto",
                                 "La asignación lógica solo se puede aplicar a expresiones lógicas (se ha introducido tipo "
                                         + E_tipo + ")");
-                    if (!idTipo.equals("lógico"))
+                    if (!idTipo.equals("logico"))
                         errSem("Asignación lógica a id en FOR incorrecto",
-                                "El identificador " + idLex + " debe ser de tipo lógico, pero es " + idTipo);
+                                "El identificador " + idLex + " debe ser de tipo logico, pero es " + idTipo);
                 }
             }
             ACTU_tipo = "tipo_ok";
@@ -1663,13 +1677,13 @@ public class Analizador_Sint_Sem {
             int idPos = gestorTs.getEntradaTSLocal(idLex);
             if (idPos != 0) {
                 errSem("Error de redeclaración de variable",
-                        "La variable " + idLex + " ya esta declarado como " + gestorTs.getTipo(idPos)
+                        "La variable " + idLex + " ya esta declarado como " + normalizarTipo(gestorTs.getTipo(idPos),false)
                                 + "y no admite redeclaracion a tipo "+T_tipo);
             }
 
             // Insertar parametro en TS local
             idPos = gestorTs.addEntradaTSLocal(idLex);
-            gestorTs.setTipo(idPos, T_tipo);
+            gestorTs.setTipo(idPos, normalizarTipo(T_tipo,true));
             gestorTs.setValorAtributoEnt(idPos, ATR_DIR, despLoc);
             gestorTs.setValorAtributoEnt(idPos, ATR_PARAM, 1);
             despLoc += T_ancho;
@@ -1724,12 +1738,12 @@ public class Analizador_Sint_Sem {
             idPos = gestorTs.getEntradaTSLocal(idLex);
             if (idPos != 0) {
                 errSem("Error de redeclaración de variable",
-                        "La variable " + idLex + " ya esta declarado como " + gestorTs.getTipo(idPos)
+                        "La variable " + idLex + " ya esta declarado como " + normalizarTipo(gestorTs.getTipo(idPos),false)
                                 + " y no admite redeclaracion a tipo "+T_tipo);
             }
 
             idPos = gestorTs.addEntradaTSLocal(idLex);
-            gestorTs.setTipo(idPos, T_tipo);
+            gestorTs.setTipo(idPos, normalizarTipo(T_tipo,true));
             gestorTs.setValorAtributoEnt(idPos, ATR_DIR, despLoc);
             gestorTs.setValorAtributoEnt(idPos, ATR_PARAM, 1);
             despLoc += T_ancho;
