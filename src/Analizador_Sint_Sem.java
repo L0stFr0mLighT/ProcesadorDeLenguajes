@@ -8,17 +8,7 @@ import tslib.TS_Gestor;
 
 import java.util.List;
 
-//TODO: revisar word que el aumento de la gramatica no esta implementado aun en el sintactico
-//TODO: revisar F(53) del word, creo que no hace falta guardar F.tipo
-//TODO: duda, si es una función no declarada, lo considero variable implicita y ya no? si no-> no tiene sentido requiereFunciónDeclarada
-//TODO: zonaDecl no creo que tenga sentido pq podemos declarar implicitamente siempre -> cambiar word EDT
-//TODO: en la regla E_AND(6) creo que sobra comprobar E1_AND porque siempre sera logico y me vale con ver tipo E1 sin ver E_AND1
-//TODO: el lexer obligatoriamente tiene que insertar los pos de id? no puede hacerlo unicamnete el semantico lo de TS?
-//TODO: en el for(42) no es necesario comprobar nada pq los errores lo catchearemos antes y seran mas especificos, quitando la de E que tiene que ser log
-//TODO: en C(51) no ses necesario comprobar nada pq nunca deberia un error llegar a expandirse hasta alli
-//TODO: en contar linea no cuenta lineas de comentarios -> decidir que hacer
 //TODO: cambiar el mensaje de esperado de error sintactico de cara al usuario y tb el codigo error (revisar si en el lexico estaba bien)
-//TODO: mirar si es necesario cambiar la forma de leer lineas
 
 //NOTAS PARA RETURN
 // - "tipo_ok" -> no hubo returns (ausencia de returns)
@@ -276,7 +266,7 @@ public class Analizador_Sint_Sem {
         // Si no hemos consumido todo el codigo fuente, error
         if (token.getTipo() != TipoToken.TYPE_EOF) {
             throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, columna, lineaSF, columnaSF, "I",
-                    token.getTipo(), "EOF", codigoFuente, token.getLex());
+                    token.getTipo(), "EOF", codigoFuente, token.getLex(), token.getAtributo(), null);
         }
         return parse;
     }
@@ -285,7 +275,7 @@ public class Analizador_Sint_Sem {
      * Metodo para comprobar si el terminal leido es correcto. Si lo es, avanza al
      * siguiente token. Si no lo es, lanza error.
      */
-    private void equipara(Token t) {
+    private void equipara(Token t, String contexto) {
         // En ID,INT,FLOAT,STRING imponemos una restriccion mas suave (no miramos su
         // atributo)
         if (token.getTipo() == TipoToken.TYPE_IDENTIFICADOR && TipoToken.TYPE_IDENTIFICADOR == t.getTipo() ||
@@ -301,7 +291,7 @@ public class Analizador_Sint_Sem {
             // Token_Inesperado gestiona internamente el mensaje a imprimir segun si debe
             // comprobar atributo o no
             throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, columna, lineaSF, columnaSF,
-                    "Equiparando", token.getTipo(), t.getTipo().toString(), codigoFuente, token.getLex());
+                    contexto, token.getTipo(), t.getTipo(), codigoFuente, token.getLex(),token.getAtributo(), t.getAtributo());
         }
     }
 
@@ -335,11 +325,11 @@ public class Analizador_Sint_Sem {
         } // 4. P -> EOF
         else if (type == TipoToken.TYPE_EOF) {
             parse = parse.concat("4 ");
-            equipara(new Token(TipoToken.TYPE_EOF, (Integer) null));
+            equipara(new Token(TipoToken.TYPE_EOF, (Integer) null),"Archivo no terminado");
         } else
             throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, columna, lineaSF, columnaSF,
                     "Se esperaba una sentencia, una declaración de función o el fin del archivo (P)", token.getTipo(),
-                    "ID, WRITE, READ, RETURN, LET, IF, FOR, FUNCTION, EOF", codigoFuente, token.getLex());
+                    "ID, WRITE, READ, RETURN, LET, IF, FOR, FUNCTION, EOF", codigoFuente, token.getLex(), token.getAtributo(),null);
     }
 
     /**
@@ -369,7 +359,7 @@ public class Analizador_Sint_Sem {
         else
             throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, columna, lineaSF, columnaSF,
                     "Sentencia no válida (S)", token.getTipo(), "ID, WRITE, READ, RETURN, LET, IF, FOR", codigoFuente,
-                    token.getLex());
+                    token.getLex(), token.getAtributo(),null);
 
         tipo = par.getLeft();
         ret = par.getRight();
@@ -385,7 +375,7 @@ public class Analizador_Sint_Sem {
         // 53. F -> function H id ( B ) { C }
         parse = parse.concat("53 ");
         marcaPal("function");
-        equipara(new Token(TipoToken.TYPE_FUNCTION, (Integer) null));
+        equipara(new Token(TipoToken.TYPE_FUNCTION, (Integer) null),"Declaracion de funcion incorrecta");
 
         String H_tipo = H(); // tipo de retorno ("entero", "real", "logico", "cadena", "vacio")
         String idLex = token.getLex();
@@ -402,13 +392,13 @@ public class Analizador_Sint_Sem {
             idPos = gestorTs.addEntradaTSGlobal(idLex);
 
         // Registrar función en TS y guardar atributos
-        int c = gestorTs.setTipo(idPos, "función");
+        gestorTs.setTipo(idPos, "función");
         gestorTs.setValorAtributoCad(idPos, ATR_TIPO_RET, H_tipo);
         gestorTs.setValorAtributoCad(idPos, ATR_ETIQUETA, nuevaEtiqueta());
 
         token.setAtributo(idPos);
         token.setPos(idPos);
-        equipara(new Token(TipoToken.TYPE_IDENTIFICADOR, (Integer) null));
+        equipara(new Token(TipoToken.TYPE_IDENTIFICADOR, (Integer) null), "Declaracion de funcion incorrecta");
 
         // Crear TS local para la función y desplazamiento local a 0
         gestorTs.createTSLocal();
@@ -416,9 +406,9 @@ public class Analizador_Sint_Sem {
         despLoc = 0;
 
         // --Parametros--
-        equipara(new Token(TipoToken.TYPE_PARENTESIS, (Integer) 0));
+        equipara(new Token(TipoToken.TYPE_PARENTESIS, (Integer) 0), "Declaracion de funcion incorrecta");
         NodePositionList<String> B_tipo = B();
-        equipara(new Token(TipoToken.TYPE_PARENTESIS, (Integer) 1));
+        equipara(new Token(TipoToken.TYPE_PARENTESIS, (Integer) 1), "Declaracion de funcion incorrecta");
 
         // Registrar tipos de parametros en TS
         String[] tiposParam;
@@ -435,9 +425,9 @@ public class Analizador_Sint_Sem {
         gestorTs.setValorAtributoLista(idPos, ATR_TIPO_PARAM, tiposParam);
 
         // --Cuerpo--
-        equipara(new Token(TipoToken.TYPE_LLAVE, (Integer) 0));
+        equipara(new Token(TipoToken.TYPE_LLAVE, (Integer) 0), "Declaracion de funcion incorrecta");
         Pair<String, String> C_par = C();
-        equipara(new Token(TipoToken.TYPE_LLAVE, (Integer) 1));
+        equipara(new Token(TipoToken.TYPE_LLAVE, (Integer) 1), "Declaracion de funcion incorrecta");
         // imprimo tabla local
         int res = gestorTs.write(TS_Gestor.Tabla.LOCAL);
         if (res != 0) {
@@ -502,7 +492,7 @@ public class Analizador_Sint_Sem {
         } else
             throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, columna, lineaSF, columnaSF,
                     "Se esperaba el inicio de una expresión (E)", token.getTipo(),
-                    "NEGACION, ID, PARENTESIS(ABIERTO), CADENA, ENTERO, REAL", codigoFuente, token.getLex());
+                    "NEGACION, ID, PARENTESIS(ABIERTO), CADENA, ENTERO, REAL", codigoFuente, token.getLex(), token.getAtributo(), null);
 
         return E_tipo;
     }
@@ -516,26 +506,18 @@ public class Analizador_Sint_Sem {
 
         String E_AND_tipo;
         String E1_tipo;
-        String E_AND1_tipo;
 
         // 6. E_AND -> && E1 E_AND
         if (type == TipoToken.TYPE_AND) {
             parse = parse.concat("6 ");
             marcaErrToken(2); // &&
-            equipara(new Token(TipoToken.TYPE_AND, (Integer) null));
+            equipara(new Token(TipoToken.TYPE_AND, (Integer) null), "Comparando");
             E1_tipo = E1();
-            E_AND1_tipo = E_AND();
+            E_AND();
 
             // Accion Semantica
             if (!E1_tipo.equals("logico"))
                 errSem("Error && logico", "Solo se puede comparar lógicos");
-            // TODO: creo que esta comprobacion sobra
-            // if (!(E1_tipo.equals(E_AND1_tipo) || E_AND1_tipo.equals("tipo_ok")))
-            // throw new ErrSemantico(lineaAnterior, columnaAnterior, linea, columna,
-            // lineaSF, columnaSF,
-            // "Error && logico", "No se puede comparar tipo " + E1_tipo + "y " +
-            // E_AND1_tipo, codigoFuente,
-            // 1);
             E_AND_tipo = "logico";
 
         }
@@ -550,7 +532,7 @@ public class Analizador_Sint_Sem {
         } else
             throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, columna, lineaSF, columnaSF,
                     "Expresion no terminada (E_AND)", token.getTipo(), "AND, PUNTO_Y_COMA, PARENTESIS, COMA",
-                    codigoFuente, token.getLex());
+                    codigoFuente, token.getLex(), token.getAtributo(), null);
 
         return E_AND_tipo;
     }
@@ -588,7 +570,7 @@ public class Analizador_Sint_Sem {
         } else
             throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, columna, lineaSF, columnaSF,
                     "Expresión incompleta después de operador logico (E1)", token.getTipo(),
-                    "NEGACION, ID, PARENTESIS, CADENA, ENTERO, REAL", codigoFuente, token.getLex());
+                    "NEGACION, ID, PARENTESIS, CADENA, ENTERO, REAL", codigoFuente, token.getLex(), token.getAtributo(), null);
 
         return E1_tipo;
     }
@@ -607,7 +589,7 @@ public class Analizador_Sint_Sem {
         if (token.equals(new Token(TipoToken.TYPE_RELACION, (Integer) 0))) {
             parse = parse.concat("9 ");
             marcaErrToken(1);// >
-            equipara(new Token(TipoToken.TYPE_RELACION, (Integer) 0));
+            equipara(new Token(TipoToken.TYPE_RELACION, (Integer) 0), "Expresion incorrecta");
             E2_tipo = E2();
             E1_REL1_tipo = E1_REL();
 
@@ -626,7 +608,7 @@ public class Analizador_Sint_Sem {
         else if (token.equals(new Token(TipoToken.TYPE_RELACION, (Integer) 1))) {
             parse = parse.concat("10 ");
             marcaErrToken(1);// <
-            equipara(new Token(TipoToken.TYPE_RELACION, (Integer) 1));
+            equipara(new Token(TipoToken.TYPE_RELACION, (Integer) 1), "Expresion incorrecta");
             E2_tipo = E2();
             E1_REL1_tipo = E1_REL();
 
@@ -651,7 +633,7 @@ public class Analizador_Sint_Sem {
         } else
             throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, columna, lineaSF, columnaSF,
                     "Expresion no terminada (E1_REL)", token.getTipo(), ">, <, AND, ) , COMA, PUNTO_Y_COMA",
-                    codigoFuente, token.getLex());
+                    codigoFuente, token.getLex(), token.getAtributo(), null);
 
         return E1_REL_tipo;
     }
@@ -690,7 +672,7 @@ public class Analizador_Sint_Sem {
         } else
             throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, columna, lineaSF, columnaSF,
                     "Expresión aritmética incompleta (E2)", token.getTipo(),
-                    "NEGACION, ID, PARENTESIS, CADENA, ENTERO, REAL", codigoFuente, token.getLex());
+                    "NEGACION, ID, PARENTESIS, CADENA, ENTERO, REAL", codigoFuente, token.getLex(), token.getAtributo(), null);
 
         return E2_tipo;
     }
@@ -709,7 +691,7 @@ public class Analizador_Sint_Sem {
         if (token.equals(new Token(TipoToken.TYPE_ARITMETICO, (Integer) 0))) {
             parse = parse.concat("13 ");
             marcaErrToken(1); // +
-            equipara(new Token(TipoToken.TYPE_ARITMETICO, (Integer) 0));
+            equipara(new Token(TipoToken.TYPE_ARITMETICO, (Integer) 0), "Expresion incorrecta");
             E3_tipo = E3();
             E2_ARIT1_tipo = E2_ARIT();
 
@@ -728,7 +710,7 @@ public class Analizador_Sint_Sem {
         else if (token.equals(new Token(TipoToken.TYPE_ARITMETICO, (Integer) 1))) {
             parse = parse.concat("14 ");
             marcaErrToken(1); // -
-            equipara(new Token(TipoToken.TYPE_ARITMETICO, (Integer) 1));
+            equipara(new Token(TipoToken.TYPE_ARITMETICO, (Integer) 1), "Expresion incorrecta");
             E3_tipo = E3();
             E2_ARIT1_tipo = E2_ARIT();
 
@@ -754,7 +736,7 @@ public class Analizador_Sint_Sem {
         } else
             throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, columna, lineaSF, columnaSF,
                     "Expresion no terminada (E2_ARIT)", token.getTipo(),
-                    "ARITMETICO, AND, PARENTESIS, COMA, PUNTO_Y_COMA, RELACION", codigoFuente, token.getLex());
+                    "ARITMETICO, AND, PARENTESIS, COMA, PUNTO_Y_COMA, RELACION", codigoFuente, token.getLex(), token.getAtributo(), null);
 
         return E2_ARIT_tipo;
     }
@@ -774,7 +756,7 @@ public class Analizador_Sint_Sem {
         if (type == TipoToken.TYPE_NEGACION) {
             parse = parse.concat("16 ");
             marcaErrToken(1); // !
-            equipara(new Token(TipoToken.TYPE_NEGACION, (Integer) null));
+            equipara(new Token(TipoToken.TYPE_NEGACION, (Integer) null), "Expresion incorrecta");
             E31_tipo = E3();
 
             // Accion Semantica
@@ -810,7 +792,7 @@ public class Analizador_Sint_Sem {
             }
             token.setAtributo(idPos);
             token.setPos(idPos);
-            equipara(new Token(TipoToken.TYPE_IDENTIFICADOR, (Integer) null));
+            equipara(new Token(TipoToken.TYPE_IDENTIFICADOR, (Integer) null), "Expresion incorrecta");
             E4_tipo = E4();
 
             if (!esLlamada) {
@@ -845,18 +827,18 @@ public class Analizador_Sint_Sem {
         // 18. E3 -> ( E )
         else if (token.equals(new Token(TipoToken.TYPE_PARENTESIS, (Integer) 0))) {
             parse = parse.concat("18 ");
-            equipara(new Token(TipoToken.TYPE_PARENTESIS, (Integer) 0));
+            equipara(new Token(TipoToken.TYPE_PARENTESIS, (Integer) 0), "Expresion incorrecta");
             E_tipo = E();
 
             // Accion Semantica
             E3_tipo = E_tipo;
 
-            equipara(new Token(TipoToken.TYPE_PARENTESIS, (Integer) 1));
+            equipara(new Token(TipoToken.TYPE_PARENTESIS, (Integer) 1), "Expresion incorrecta");
         }
         // 19. E3 -> cadena
         else if (type == TipoToken.TYPE_CADENA) {
             parse = parse.concat("19 ");
-            equipara(new Token(TipoToken.TYPE_CADENA, (Integer) null));
+            equipara(new Token(TipoToken.TYPE_CADENA, (Integer) null), "Expresion incorrecta");
 
             // Accion Semantica
             E3_tipo = "cadena";
@@ -865,7 +847,7 @@ public class Analizador_Sint_Sem {
         // 20. E3 -> entero
         else if (type == TipoToken.TYPE_ENTERO) {
             parse = parse.concat("20 ");
-            equipara(new Token(TipoToken.TYPE_ENTERO, (Integer) null));
+            equipara(new Token(TipoToken.TYPE_ENTERO, (Integer) null), "Expresion incorrecta");
 
             // Accion Semantica
             E3_tipo = "entero";
@@ -874,7 +856,7 @@ public class Analizador_Sint_Sem {
         // 21. E3 -> real
         else if (type == TipoToken.TYPE_REAL) {
             parse = parse.concat("21 ");
-            equipara(new Token(TipoToken.TYPE_REAL, (Integer) null));
+            equipara(new Token(TipoToken.TYPE_REAL, (Integer) null), "Expresion incorrecta");
 
             // Accion Semantica
             E3_tipo = "real";
@@ -882,7 +864,7 @@ public class Analizador_Sint_Sem {
         } else
             throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, columna, lineaSF, columnaSF,
                     "Elemento de expresión no válido o incompleto. (E3)", token.getTipo(),
-                    "NEGACION, ID, PARENTESIS, CADENA, ENTERO, REAL", codigoFuente, token.getLex());
+                    "NEGACION, ID, PARENTESIS, CADENA, ENTERO, REAL", codigoFuente, token.getLex(), token.getAtributo(), null);
 
         return E3_tipo;
     }
@@ -901,13 +883,13 @@ public class Analizador_Sint_Sem {
         if (token.equals(new Token(TipoToken.TYPE_PARENTESIS, (Integer) 0))) {
             parse = parse.concat("22 ");
             marcaErrToken(1); // (
-            equipara(new Token(TipoToken.TYPE_PARENTESIS, (Integer) 0));
+            equipara(new Token(TipoToken.TYPE_PARENTESIS, (Integer) 0), "Expresion incorrecta");
             L_tipo = L();
 
             // Accion Semantica
             E4_tipo = new NodePositionList<>(L_tipo);
 
-            equipara(new Token(TipoToken.TYPE_PARENTESIS, (Integer) 1));
+            equipara(new Token(TipoToken.TYPE_PARENTESIS, (Integer) 1), "Expresion incorrecta");
         }
         // 23. E4 -> lambda | FOLLOW(E4) = { "+", "-", ">", "<", "&&", ")", ",", ";" }
         else if (type == TipoToken.TYPE_AND || token.equals(new Token(TipoToken.TYPE_PARENTESIS, (Integer) 1)) ||
@@ -921,7 +903,7 @@ public class Analizador_Sint_Sem {
         } else
             throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, columna, lineaSF, columnaSF,
                     "Después del identificador se esperaba una llamada a función '(...)' o nada (E4)", token.getTipo(),
-                    "PARENTESIS, AND, COMA, PUNTO_Y_COMA, RELACION, ARITMETICO", codigoFuente, token.getLex());
+                    "PARENTESIS, AND, COMA, PUNTO_Y_COMA, RELACION, ARITMETICO", codigoFuente, token.getLex(), token.getAtributo(), null);
 
         return E4_tipo;
     }
@@ -970,7 +952,7 @@ public class Analizador_Sint_Sem {
             // como 0 pq totalmente ASIGFUN seguro que da error
             token.setAtributo(idPos);
             token.setPos(idPos);
-            equipara(new Token(TipoToken.TYPE_IDENTIFICADOR, (Integer) null));
+            equipara(new Token(TipoToken.TYPE_IDENTIFICADOR, (Integer) null), "Llamada a funcion o asignacion incorrecta");
 
             ASIGFUN_tipo = ASIGFUN();
             if (esAsignacion) {
@@ -1012,10 +994,10 @@ public class Analizador_Sint_Sem {
         else if (type == TipoToken.TYPE_WRITE) {
             parse = parse.concat("27 ");
             marcaPal("write");
-            equipara(new Token(TipoToken.TYPE_WRITE, (Integer) null));
+            equipara(new Token(TipoToken.TYPE_WRITE, (Integer) null), "Comparando");
             E_tipo = E();
 
-            equipara(new Token(TipoToken.TYPE_PUNTO_Y_COMA, (Integer) null));
+            equipara(new Token(TipoToken.TYPE_PUNTO_Y_COMA, (Integer) null), "Sentencia no terminada");
 
             // Accion Semantica
             if (!("real".equals(E_tipo) ||
@@ -1030,7 +1012,7 @@ public class Analizador_Sint_Sem {
         } // 28. S_SIMPLE -> read id ;
         else if (type == TipoToken.TYPE_READ) {
             parse = parse.concat("28 ");
-            equipara(new Token(TipoToken.TYPE_READ, (Integer) null));
+            equipara(new Token(TipoToken.TYPE_READ, (Integer) null), "Comparando");
             String idLex = token.getLex(); // capturo datos de id
 
             marcaErrLexema();
@@ -1045,8 +1027,8 @@ public class Analizador_Sint_Sem {
 
             token.setAtributo(idPos);
             token.setPos(idPos);
-            equipara(new Token(TipoToken.TYPE_IDENTIFICADOR, (Integer) null));
-            equipara(new Token(TipoToken.TYPE_PUNTO_Y_COMA, (Integer) null));
+            equipara(new Token(TipoToken.TYPE_IDENTIFICADOR, (Integer) null), "Sentencia de lectura incorrecta");
+            equipara(new Token(TipoToken.TYPE_PUNTO_Y_COMA, (Integer) null), "Sentencia no terminada");
 
             S_SIMPLE_tipo = "tipo_ok";
             S_SIMPLE_ret = "tipo_ok";
@@ -1054,9 +1036,9 @@ public class Analizador_Sint_Sem {
         else if (type == TipoToken.TYPE_RETURN) {
             parse = parse.concat("29 ");
             marcaPal("return");
-            equipara(new Token(TipoToken.TYPE_RETURN, (Integer) null));
+            equipara(new Token(TipoToken.TYPE_RETURN, (Integer) null), "Comparando");
             X_tipo = X();
-            equipara(new Token(TipoToken.TYPE_PUNTO_Y_COMA, (Integer) null));
+            equipara(new Token(TipoToken.TYPE_PUNTO_Y_COMA, (Integer) null), "Sentencia no terminada");
 
             // Accion Semantica
             S_SIMPLE_tipo = "tipo_ok";
@@ -1065,7 +1047,7 @@ public class Analizador_Sint_Sem {
         } else
             throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, columna, lineaSF, columnaSF,
                     "Sentencia simple mal formada (S_SIMPLE)", token.getTipo(), "ID, WRITE, READ, RETURN", codigoFuente,
-                    token.getLex());
+                    token.getLex(), token.getAtributo(), null);
 
         return new Pair<String, String>(S_SIMPLE_tipo, S_SIMPLE_ret);
     }
@@ -1082,9 +1064,6 @@ public class Analizador_Sint_Sem {
         String E_tipo;
         String S_SIMPLE_tipo;
         String S_SIMPLE_ret;
-        // TODO: creo que esto sobra
-        String INI_tipo;
-        String ACTU_tipo;
         String C_tipo;
         String C_ret;
 
@@ -1093,7 +1072,7 @@ public class Analizador_Sint_Sem {
         // 40. S_COMPUESTA -> let T id ;
         if (type == TipoToken.TYPE_LET) {
             parse = parse.concat("40 ");
-            equipara(new Token(TipoToken.TYPE_LET, (Integer) null));
+            equipara(new Token(TipoToken.TYPE_LET, (Integer) null), "Comparando");
 
             Pair<String, Integer> tPar = T(); // Obtenemos tipo y anchura de tipo
 
@@ -1129,8 +1108,7 @@ public class Analizador_Sint_Sem {
                 }
 
                 // id a la TSGlobal bien (posible comprobacion innecesaria)
-                if (posG == 0)
-                    posG = gestorTs.addEntradaTSGlobal(idLex);
+                if (posG == 0) posG = gestorTs.addEntradaTSGlobal(idLex);
 
                 gestorTs.setTipo(posG, normalizarTipo(T_tipo,true));
                 gestorTs.setValorAtributoEnt(posG, ATR_DIR, despGlob);
@@ -1140,8 +1118,8 @@ public class Analizador_Sint_Sem {
             }
             token.setAtributo(idPos);
             token.setPos(idPos);
-            equipara(new Token(TipoToken.TYPE_IDENTIFICADOR, (Integer) null));
-            equipara(new Token(TipoToken.TYPE_PUNTO_Y_COMA, (Integer) null)); // TODO: esto era necesario?
+            equipara(new Token(TipoToken.TYPE_IDENTIFICADOR, (Integer) null), "Declaracion incorrecta");
+            equipara(new Token(TipoToken.TYPE_PUNTO_Y_COMA, (Integer) null), "Sentencia no terminada");
 
             S_COMPUESTA_tipo = "tipo_ok";
             S_COMPUESTA_ret = "tipo_ok";
@@ -1150,10 +1128,10 @@ public class Analizador_Sint_Sem {
         else if (type == TipoToken.TYPE_IF) {
             parse = parse.concat("41 ");
             marcaPal("if");
-            equipara(new Token(TipoToken.TYPE_IF, (Integer) null));
-            equipara(new Token(TipoToken.TYPE_PARENTESIS, (Integer) 0));
+            equipara(new Token(TipoToken.TYPE_IF, (Integer) null), "Comparando");
+            equipara(new Token(TipoToken.TYPE_PARENTESIS, (Integer) 0), "Sentencia condicional incorrecta");
             E_tipo = E();
-            equipara(new Token(TipoToken.TYPE_PARENTESIS, (Integer) 1));
+            equipara(new Token(TipoToken.TYPE_PARENTESIS, (Integer) 1), "Sentencia condicional incorrecta");
             Pair<String, String> par = S_SIMPLE();
             S_SIMPLE_tipo = par.getLeft();
             S_SIMPLE_ret = par.getRight();
@@ -1171,23 +1149,23 @@ public class Analizador_Sint_Sem {
         else if (type == TipoToken.TYPE_FOR) {
             parse = parse.concat("42 ");
             marcaPal("for");
-            equipara(new Token(TipoToken.TYPE_FOR, (Integer) null));
-            equipara(new Token(TipoToken.TYPE_PARENTESIS, (Integer) 0));
+            equipara(new Token(TipoToken.TYPE_FOR, (Integer) null), "Comparando");
+            equipara(new Token(TipoToken.TYPE_PARENTESIS, (Integer) 0), "Sentencia de bucle 'for' incorrecta");
             INI();
-            equipara(new Token(TipoToken.TYPE_PUNTO_Y_COMA, (Integer) null));
+            equipara(new Token(TipoToken.TYPE_PUNTO_Y_COMA, (Integer) null), "Sentencia de bucle 'for' incorrecta");
             marcaErrToken(1);
             E_tipo = E();
             if(!E_tipo.equals("logico"))
                 errSem("Condición del FOR incorrecto", 
                         "La expresión como condicion en el FOR tiene que ser logico (se introdujo tipo "+E_tipo+")");
-            equipara(new Token(TipoToken.TYPE_PUNTO_Y_COMA, (Integer) null));
+            equipara(new Token(TipoToken.TYPE_PUNTO_Y_COMA, (Integer) null), "Sentencia de bucle 'for' incorrecta");
             ACTU();
-            equipara(new Token(TipoToken.TYPE_PARENTESIS, (Integer) 1));
-            equipara(new Token(TipoToken.TYPE_LLAVE, (Integer) 0));
+            equipara(new Token(TipoToken.TYPE_PARENTESIS, (Integer) 1), "Sentencia de bucle 'for' incorrecta");
+            equipara(new Token(TipoToken.TYPE_LLAVE, (Integer) 0), "Sentencia de bucle 'for' incorrecta");
             Pair<String, String> par = C();
             C_tipo = par.getLeft();
             C_ret = par.getRight();
-            equipara(new Token(TipoToken.TYPE_LLAVE, (Integer) 1));
+            equipara(new Token(TipoToken.TYPE_LLAVE, (Integer) 1), "Sentencia de bucle 'for' incorrecta");
 
             // Accion Semantica
             S_COMPUESTA_tipo = C_tipo;
@@ -1197,7 +1175,7 @@ public class Analizador_Sint_Sem {
         } else
             throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, columna, lineaSF, columnaSF,
                     "Sentencia compuesta incompleta o mal escrita (S_COMPUESTA)", token.getTipo(), "LET, IF, FOR",
-                    codigoFuente, token.getLex());
+                    codigoFuente, token.getLex(), token.getAtributo(), null);
 
         return new Pair<String, String>(S_COMPUESTA_tipo, S_COMPUESTA_ret);
     }
@@ -1218,7 +1196,7 @@ public class Analizador_Sint_Sem {
             parse = parse.concat("30 ");
             A_tipo = A();
             E_tipo = E();
-            equipara(new Token(TipoToken.TYPE_PUNTO_Y_COMA, (Integer) null));
+            equipara(new Token(TipoToken.TYPE_PUNTO_Y_COMA, (Integer) null), "Sentencia no terminada");
 
             // Accion Semantica
             ASIGFUN_tipo = new NodePositionList<>();
@@ -1234,10 +1212,10 @@ public class Analizador_Sint_Sem {
         // 31. ASIGFUN -> ( L ) ;
         else if (token.equals(new Token(TipoToken.TYPE_PARENTESIS, (Integer) 0))) {
             parse = parse.concat("31 ");
-            equipara(new Token(TipoToken.TYPE_PARENTESIS, (Integer) 0));
+            equipara(new Token(TipoToken.TYPE_PARENTESIS, (Integer) 0), "Llamada a funcion incorrecta");
             L_tipo = L();
-            equipara(new Token(TipoToken.TYPE_PARENTESIS, (Integer) 1));
-            equipara(new Token(TipoToken.TYPE_PUNTO_Y_COMA, (Integer) null));
+            equipara(new Token(TipoToken.TYPE_PARENTESIS, (Integer) 1), "Llamada a funcion incorrecta");
+            equipara(new Token(TipoToken.TYPE_PUNTO_Y_COMA, (Integer) null), "Sentencia no terminada");
 
             // Accion Semantica
             ASIGFUN_tipo = new NodePositionList<>(L_tipo);
@@ -1245,7 +1223,7 @@ public class Analizador_Sint_Sem {
         } else
             throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, columna, lineaSF, columnaSF,
                     "Se esperaba una asignación '= expr;' o una llamada a función '(...)' (ASIGFUN)", token.getTipo(),
-                    "ASIGNACION, PARENTESIS", codigoFuente, token.getLex());
+                    "ASIGNACION, PARENTESIS", codigoFuente, token.getLex(), token.getAtributo(), null);
 
         return ASIGFUN_tipo;
     }
@@ -1262,7 +1240,7 @@ public class Analizador_Sint_Sem {
         if (token.equals(new Token(TipoToken.TYPE_ASIGNACION, (Integer) 0))) {
             parse = parse.concat("32 ");
             marcaErrToken(1);
-            equipara(new Token(TipoToken.TYPE_ASIGNACION, (Integer) 0));
+            equipara(new Token(TipoToken.TYPE_ASIGNACION, (Integer) 0), "Comparando");
 
             // Accion Semantica
             A_tipo = "tipo_ok";
@@ -1271,7 +1249,7 @@ public class Analizador_Sint_Sem {
         else if (token.equals(new Token(TipoToken.TYPE_ASIGNACION, (Integer) 1))) {
             parse = parse.concat("33 ");
             marcaErrToken(2);
-            equipara(new Token(TipoToken.TYPE_ASIGNACION, (Integer) 1));
+            equipara(new Token(TipoToken.TYPE_ASIGNACION, (Integer) 1), "Comparando");
 
             // Accion Semantica
             A_tipo = "logico";
@@ -1279,7 +1257,7 @@ public class Analizador_Sint_Sem {
         } else
             throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, columna, lineaSF, columnaSF,
                     "Se esperaba un operador de asignación (= o |=) (A)", token.getTipo(), "ASGINACION", codigoFuente,
-                    token.getLex());
+                    token.getLex(), token.getAtributo(), null);
 
         return A_tipo;
     }
@@ -1318,7 +1296,7 @@ public class Analizador_Sint_Sem {
         } else
             throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, columna, lineaSF, columnaSF,
                     "Lista de argumentos mal formada (L)", token.getTipo(),
-                    "NEGACION, ID, PARENTESIS, CADENA, ENTERO, REAL", codigoFuente, token.getLex());
+                    "NEGACION, ID, PARENTESIS, CADENA, ENTERO, REAL", codigoFuente, token.getLex(), token.getAtributo(), null);
 
         return L_tipo;
     }
@@ -1336,7 +1314,7 @@ public class Analizador_Sint_Sem {
         // 36. Q -> , E Q
         if (type == TipoToken.TYPE_COMA) {
             parse = parse.concat("36 ");
-            equipara(new Token(TipoToken.TYPE_COMA, (Integer) null));
+            equipara(new Token(TipoToken.TYPE_COMA, (Integer) null), "Comparando");
             E_tipo = E();
             Q1_tipo = Q();
 
@@ -1356,7 +1334,7 @@ public class Analizador_Sint_Sem {
         } else
             throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, columna, lineaSF, columnaSF,
                     "Se esperaba un elemento después de la coma (Q)", token.getTipo(), "COMA, PARENTESIS", codigoFuente,
-                    token.getLex());
+                    token.getLex(), token.getAtributo(), null);
 
         return Q_tipo;
     }
@@ -1391,7 +1369,7 @@ public class Analizador_Sint_Sem {
         } else
             throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, columna, lineaSF, columnaSF,
                     "Después de 'return' debe venir una expresión o un ';' (X)", token.getTipo(),
-                    "NEGACION, ID, PARENTESIS, CADENA, ENTERO, REAL, PUNTO_Y_COMA", codigoFuente, token.getLex());
+                    "NEGACION, ID, PARENTESIS, CADENA, ENTERO, REAL, PUNTO_Y_COMA", codigoFuente, token.getLex(), token.getAtributo(), null);
 
         return X_tipo;
     }
@@ -1408,7 +1386,7 @@ public class Analizador_Sint_Sem {
         // 43. T -> int
         if (type == TipoToken.TYPE_INT) {
             parse = parse.concat("43 ");
-            equipara(new Token(TipoToken.TYPE_INT, (Integer) null));
+            equipara(new Token(TipoToken.TYPE_INT, (Integer) null), "Comparando");
 
             // Accion Semantica
             T_tipo = "entero";
@@ -1417,7 +1395,7 @@ public class Analizador_Sint_Sem {
         } // 44. T -> float
         else if (type == TipoToken.TYPE_FLOAT) {
             parse = parse.concat("44 ");
-            equipara(new Token(TipoToken.TYPE_FLOAT, (Integer) null));
+            equipara(new Token(TipoToken.TYPE_FLOAT, (Integer) null), "Comparando");
 
             // Accion Semantica
             T_tipo = "real";
@@ -1426,7 +1404,7 @@ public class Analizador_Sint_Sem {
         } // 45. T -> boolean
         else if (type == TipoToken.TYPE_BOOLEAN) {
             parse = parse.concat("45 ");
-            equipara(new Token(TipoToken.TYPE_BOOLEAN, (Integer) null));
+            equipara(new Token(TipoToken.TYPE_BOOLEAN, (Integer) null), "Comparando");
 
             // Accion Semantica
             T_tipo = "logico";
@@ -1435,7 +1413,7 @@ public class Analizador_Sint_Sem {
         } // 46. T -> string
         else if (type == TipoToken.TYPE_STRING) {
             parse = parse.concat("46 ");
-            equipara(new Token(TipoToken.TYPE_STRING, (Integer) null));
+            equipara(new Token(TipoToken.TYPE_STRING, (Integer) null), "Comparando");
 
             // Accion Semantica
             T_tipo = "cadena";
@@ -1444,7 +1422,7 @@ public class Analizador_Sint_Sem {
         } else
             throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, columna, lineaSF, columnaSF,
                     "Leyendo tipo de dato (int, float, boolean, string) (T)", token.getTipo(),
-                    "INT, FLOAT, BOOLEAN, STRING", codigoFuente, token.getLex());
+                    "INT, FLOAT, BOOLEAN, STRING", codigoFuente, token.getLex(), token.getAtributo(), null);
 
         return new Pair<String, Integer>(T_tipo, T_ancho);
     }
@@ -1470,8 +1448,8 @@ public class Analizador_Sint_Sem {
 
             token.setAtributo(idPos);
             token.setPos(idPos);
-            equipara(new Token(TipoToken.TYPE_IDENTIFICADOR, (Integer) null));
-            equipara(new Token(TipoToken.TYPE_ASIGNACION, (Integer) 0));
+            equipara(new Token(TipoToken.TYPE_IDENTIFICADOR, (Integer) null), "Comparando");
+            equipara(new Token(TipoToken.TYPE_ASIGNACION, (Integer) 0), "Inicializacion del bucle 'for' incorrecto");
             E_tipo = E();
 
             // Accion Semantica
@@ -1490,7 +1468,7 @@ public class Analizador_Sint_Sem {
         } else
             throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, columna, lineaSF, columnaSF,
                     "Inicialización inválida en el 'for' (INI)", token.getTipo(), "ID, PUNTO_Y_COMA", codigoFuente,
-                    token.getLex());
+                    token.getLex(), token.getAtributo(), null);
 
         return INI_tipo;
     }
@@ -1515,11 +1493,9 @@ public class Analizador_Sint_Sem {
 
             token.setAtributo(idPos);
             token.setPos(idPos);
-            equipara(new Token(TipoToken.TYPE_IDENTIFICADOR, (Integer) null));
+            equipara(new Token(TipoToken.TYPE_IDENTIFICADOR, (Integer) null), "Comparando");
             String A_tipo = A();
             String E_tipo = E();
-            //TODO: creo q en ACTU dentro de FOR no hace falta acabar en ; -> cambiar word (el profe no lo detecto antes por suerte xd)
-            // equipara(new Token(TipoToken.TYPE_PUNTO_Y_COMA, (Integer) null));
 
             // Accion Semantica
             if (A_tipo.equals("tipo_ok")) {
@@ -1528,7 +1504,6 @@ public class Analizador_Sint_Sem {
                             "El id tiene tipo " + idTipo + " y no es compatible con el tipo " + E_tipo);
 
             } else {
-                // TODO: Esta comprobacion creo que es innecesaria (la mas externa)
                 if (A_tipo.equals("logico")) {
                     if (!E_tipo.equals("logico"))
                         errSem("Asignacion logico en FOR incorrecto",
@@ -1547,7 +1522,7 @@ public class Analizador_Sint_Sem {
         } else
             throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, columna, lineaSF, columnaSF,
                     "Actualización inválida en el 'for' (ACTU)", token.getTipo(), "ID, PARENTESIS", codigoFuente,
-                    token.getLex());
+                    token.getLex(), token.getAtributo(), null);
 
         return ACTU_tipo;
     }
@@ -1579,8 +1554,6 @@ public class Analizador_Sint_Sem {
             C1_ret = parC.getRight();
 
             // Accion Semantica
-            // Este error nunca deberia ocurrir si los anteriores catchean bien antes (seria
-            // un error demasiado general), lo dejo para casos misteriosos
             if (!S_tipo.equals("tipo_ok"))
                 errSem("Sentencia incorrecta en cuerpo", "La sentencia es incorrecta en anidamientos de cuerpos");
 
@@ -1611,8 +1584,8 @@ public class Analizador_Sint_Sem {
 
         } else
             throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, columna, lineaSF, columnaSF,
-                    "Bloque de código mal formado (C)", token.getTipo(), "ID, WRITE, READ, RETURN, LET, IF, FOR, LLAVE",
-                    codigoFuente, token.getLex());
+                    "Error en el bloque de codigo", token.getTipo(), "Sentencia (ID, WRITE, READ, RETURN, LET, IF, FOR) o fin de bloque (\'}\')",
+                    codigoFuente, token.getLex(), token.getAtributo(), null);
 
         return new Pair<String, String>(C_tipo, C_ret);
     }
@@ -1639,7 +1612,7 @@ public class Analizador_Sint_Sem {
         } // 55. H -> void
         else if (type == TipoToken.TYPE_VOID) {
             parse = parse.concat("55 ");
-            equipara(new Token(TipoToken.TYPE_VOID, (Integer) null));
+            equipara(new Token(TipoToken.TYPE_VOID, (Integer) null), "Comparando");
 
             // Accion Semantica
             H_tipo = "vacio"; // Simbolizo que no necesito return
@@ -1647,7 +1620,7 @@ public class Analizador_Sint_Sem {
         } else
             throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, columna, lineaSF, columnaSF,
                     "Se esperaba un tipo de retorno o 'void' (H)", token.getTipo(), "INT, FLOAT, BOOLEAN, STRING, VOID",
-                    codigoFuente, token.getLex());
+                    codigoFuente, token.getLex(), token.getAtributo(), null);
 
         return H_tipo;
     }
@@ -1690,7 +1663,7 @@ public class Analizador_Sint_Sem {
 
             token.setAtributo(idPos);
             token.setPos(idPos);
-            equipara(new Token(TipoToken.TYPE_IDENTIFICADOR, (Integer) null));
+            equipara(new Token(TipoToken.TYPE_IDENTIFICADOR, (Integer) null), "Parametros de funcion incorrectos");
 
             K_tipo = K();
             // B_tipo = T.tipo x K_tipo (si k = tipo_ok -> lambda = solo T.tipo)
@@ -1702,12 +1675,12 @@ public class Analizador_Sint_Sem {
         } // 57. B -> void
         else if (type == TipoToken.TYPE_VOID) {
             parse = parse.concat("57 ");
-            equipara(new Token(TipoToken.TYPE_VOID, (Integer) null));
+            equipara(new Token(TipoToken.TYPE_VOID, (Integer) null), "Comparando");
             B_tipo.addLast("vacio");
         } else
             throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, columna, lineaSF, columnaSF,
                     "Lista de parámetros mal formada o incompleta (B)", token.getTipo(),
-                    "INT, FLOAT, BOOLEAN, STRING, VOID", codigoFuente, token.getLex());
+                    "INT, FLOAT, BOOLEAN, STRING, VOID", codigoFuente, token.getLex(), token.getAtributo(), null);
 
         return B_tipo;
     }
@@ -1726,7 +1699,7 @@ public class Analizador_Sint_Sem {
         // 58. K -> , T id K
         if (type == TipoToken.TYPE_COMA) {
             parse = parse.concat("58 ");
-            equipara(new Token(TipoToken.TYPE_COMA, (Integer) null));
+            equipara(new Token(TipoToken.TYPE_COMA, (Integer) null),"Comparando");
 
             Pair<String, Integer> T_par = T();
             T_tipo = T_par.getLeft();
@@ -1750,7 +1723,7 @@ public class Analizador_Sint_Sem {
 
             token.setAtributo(idPos);
             token.setPos(idPos);
-            equipara(new Token(TipoToken.TYPE_IDENTIFICADOR, (Integer) null));
+            equipara(new Token(TipoToken.TYPE_IDENTIFICADOR, (Integer) null), "Parametros de funcion incorrectos");
 
             K1_tipo = K();
             K_tipo.addLast(T_tipo);
@@ -1767,7 +1740,7 @@ public class Analizador_Sint_Sem {
         } else
             throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, columna, lineaSF, columnaSF,
                     "Error en los parametros de la función (K)", token.getTipo(), "COMA, PARENTESIS", codigoFuente,
-                    token.getLex());
+                    token.getLex(), token.getAtributo(), null);
 
         return K_tipo;
     }

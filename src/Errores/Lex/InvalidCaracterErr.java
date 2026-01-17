@@ -8,7 +8,7 @@ import Errores.TipoError;
 
 public class InvalidCaracterErr extends Err {
     public InvalidCaracterErr(int linea, int columna, int estado, Character car, List<String> codigoFuente) {
-        super(linea, columna,linea,columna,linea,columna, TipoError.LEXICO, CodError.INVALID_CARACTER,
+        super(linea, columna,linea,columna,linea,columna, TipoError.LEXICO, CodError.INVALID_CARACTER.ordinal(),
               "Carácter inválido en estado " + estado + ": \"" + car + "\" .", codigoFuente,1);
     }
 }

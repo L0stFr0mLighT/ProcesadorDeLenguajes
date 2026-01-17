@@ -3,7 +3,6 @@ public enum CodError{
     //Analizador lexico
     CADENA_TOO_LARGE,
     INT_TOO_LARGE,
-    ID_TOO_LARGE,
     REAL_ERROR,
     INVALID_CARACTER,
     CADENA_NO_TERMINADA,

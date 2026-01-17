@@ -6,7 +6,6 @@ import Errores.Lex.CadenaNoTerminadaErr;
 import Errores.Lex.CadenaTooLargeErr;
 import Errores.Lex.ComentarioNoTerminadoErr;
 import Errores.Lex.FaltaDecimal;
-import Errores.Lex.IdTooLargeErr;
 import Errores.Lex.IntTooLargeErr;
 import Errores.Lex.InvalidCaracterErr;
 import Errores.Lex.RealTooLargeErr;
@@ -463,10 +462,6 @@ public class Analizador_Lexico {
                         break;
                     // Genero Token ID (8-17)
                     case 'L':
-                        // EXCEPTION: id demasiado grande
-                        // TODO: creo que este error sobraba
-                        if (lex.length() >= 64)
-                            throw new IdTooLargeErr(lineaActual, columna, codigoFuente, lex.length());
                         // Miramos si es palabra reservada
                         if (gestor.getEntradaTPalabrasReservadas(lex) == 0) {
                             int pos = gestor.getEntradaTS(lex);
