@@ -328,8 +328,9 @@ public class Analizador_Sint_Sem {
             equipara(new Token(TipoToken.TYPE_EOF, (Integer) null),"Archivo no terminado");
         } else
             throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, columna, lineaSF, columnaSF,
-                    "Se esperaba una sentencia, una declaración de función o el fin del archivo (P)", token.getTipo(),
-                    "ID, WRITE, READ, RETURN, LET, IF, FOR, FUNCTION, EOF", codigoFuente, token.getLex(), token.getAtributo(),null);
+                    "Se esperaba una sentencia, una declaración de función o el fin del archivo", token.getTipo(),
+                    "'identificador', sentencia escribir 'write', sentencia leer 'read', sentencia de retorno de funcion 'return', declaracion de variable 'let', sentencia condicional 'if', sentencia de bucle 'for', declaracion de funcion 'function', EOF", 
+                    codigoFuente, token.getLex(), token.getAtributo(),null);
     }
 
     /**
@@ -358,8 +359,8 @@ public class Analizador_Sint_Sem {
 
         else
             throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, columna, lineaSF, columnaSF,
-                    "Sentencia no válida (S)", token.getTipo(), "ID, WRITE, READ, RETURN, LET, IF, FOR", codigoFuente,
-                    token.getLex(), token.getAtributo(),null);
+                    "Sentencia incorrecta", token.getTipo(), "'identificador', sentencia escribir 'write', sentencia leer 'read', sentencia de retorno de funcion 'return', declaracion de variable 'let', sentencia condicional 'if', sentencia de bucle 'for'",
+                    codigoFuente, token.getLex(), token.getAtributo(),null);
 
         tipo = par.getLeft();
         ret = par.getRight();
@@ -370,16 +371,18 @@ public class Analizador_Sint_Sem {
      * Metodo para el analisis de la produccion F.
      */
     private void F() {
-
+        String H_tipo;
+        String idLex;
+        int idPos;
         marcaInicioSentencia(); // Checkpoint para CONTEXTO del error
+
         // 53. F -> function H id ( B ) { C }
         parse = parse.concat("53 ");
         marcaPal("function");
         equipara(new Token(TipoToken.TYPE_FUNCTION, (Integer) null),"Declaracion de funcion incorrecta");
-
-        String H_tipo = H(); // tipo de retorno ("entero", "real", "logico", "cadena", "vacio")
-        String idLex = token.getLex();
-        int idPos = gestorTs.getEntradaTSGlobal(idLex);
+        H_tipo = H(); // tipo de retorno ("entero", "real", "logico", "cadena", "vacio")
+        idLex = token.getLex();
+        idPos = gestorTs.getEntradaTSGlobal(idLex);
         // Miro que no esté ya declarada la variable
         if (normalizarTipo(gestorTs.getTipo(idPos),false) != null) {
             errSem("Error de redeclaración de variable",
@@ -492,7 +495,7 @@ public class Analizador_Sint_Sem {
         } else
             throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, columna, lineaSF, columnaSF,
                     "Se esperaba el inicio de una expresión (E)", token.getTipo(),
-                    "NEGACION, ID, PARENTESIS(ABIERTO), CADENA, ENTERO, REAL", codigoFuente, token.getLex(), token.getAtributo(), null);
+                    "NEGACION, 'identificador', PARENTESIS(ABIERTO), CADENA, ENTERO, REAL", codigoFuente, token.getLex(), token.getAtributo(), null);
 
         return E_tipo;
     }
@@ -570,7 +573,7 @@ public class Analizador_Sint_Sem {
         } else
             throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, columna, lineaSF, columnaSF,
                     "Expresión incompleta después de operador logico (E1)", token.getTipo(),
-                    "NEGACION, ID, PARENTESIS, CADENA, ENTERO, REAL", codigoFuente, token.getLex(), token.getAtributo(), null);
+                    "NEGACION, 'identificador', PARENTESIS, CADENA, ENTERO, REAL", codigoFuente, token.getLex(), token.getAtributo(), null);
 
         return E1_tipo;
     }
@@ -672,7 +675,7 @@ public class Analizador_Sint_Sem {
         } else
             throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, columna, lineaSF, columnaSF,
                     "Expresión aritmética incompleta (E2)", token.getTipo(),
-                    "NEGACION, ID, PARENTESIS, CADENA, ENTERO, REAL", codigoFuente, token.getLex(), token.getAtributo(), null);
+                    "NEGACION, 'identificador', PARENTESIS, CADENA, ENTERO, REAL", codigoFuente, token.getLex(), token.getAtributo(), null);
 
         return E2_tipo;
     }
@@ -864,7 +867,7 @@ public class Analizador_Sint_Sem {
         } else
             throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, columna, lineaSF, columnaSF,
                     "Elemento de expresión no válido o incompleto. (E3)", token.getTipo(),
-                    "NEGACION, ID, PARENTESIS, CADENA, ENTERO, REAL", codigoFuente, token.getLex(), token.getAtributo(), null);
+                    "NEGACION, 'identificador', PARENTESIS, CADENA, ENTERO, REAL", codigoFuente, token.getLex(), token.getAtributo(), null);
 
         return E3_tipo;
     }
@@ -1046,7 +1049,7 @@ public class Analizador_Sint_Sem {
 
         } else
             throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, columna, lineaSF, columnaSF,
-                    "Sentencia simple mal formada (S_SIMPLE)", token.getTipo(), "ID, WRITE, READ, RETURN", codigoFuente,
+                    "Sentencia simple mal formada (S_SIMPLE)", token.getTipo(), "'identificador', sentencia escribir 'write', sentencia leer 'read', sentencia de retorno de funcion 'return'", codigoFuente,
                     token.getLex(), token.getAtributo(), null);
 
         return new Pair<String, String>(S_SIMPLE_tipo, S_SIMPLE_ret);
@@ -1138,7 +1141,7 @@ public class Analizador_Sint_Sem {
 
             // Accion Semantica
             if (!E_tipo.equals("logico"))
-                errSem("Ausencia lógica en IF",
+                errSem("Ausencia lógica en sentencia condicional 'if'",
                         "El tipo " + E_tipo + " no sirve como condicion para el if (solo acepta logico)");
 
             S_COMPUESTA_tipo = S_SIMPLE_tipo;
@@ -1156,8 +1159,8 @@ public class Analizador_Sint_Sem {
             marcaErrToken(1);
             E_tipo = E();
             if(!E_tipo.equals("logico"))
-                errSem("Condición del FOR incorrecto", 
-                        "La expresión como condicion en el FOR tiene que ser logico (se introdujo tipo "+E_tipo+")");
+                errSem("Condición del sentencia de bucle 'for' incorrecto", 
+                        "La expresión como condicion en el sentencia de bucle 'for' tiene que ser logico (se introdujo tipo "+E_tipo+")");
             equipara(new Token(TipoToken.TYPE_PUNTO_Y_COMA, (Integer) null), "Sentencia de bucle 'for' incorrecta");
             ACTU();
             equipara(new Token(TipoToken.TYPE_PARENTESIS, (Integer) 1), "Sentencia de bucle 'for' incorrecta");
@@ -1174,7 +1177,7 @@ public class Analizador_Sint_Sem {
 
         } else
             throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, columna, lineaSF, columnaSF,
-                    "Sentencia compuesta incompleta o mal escrita (S_COMPUESTA)", token.getTipo(), "LET, IF, FOR",
+                    "Sentencia compuesta incompleta o mal escrita (S_COMPUESTA)", token.getTipo(), "declaracion de variable 'let', sentencia condicional 'if', sentencia de bucle 'for'",
                     codigoFuente, token.getLex(), token.getAtributo(), null);
 
         return new Pair<String, String>(S_COMPUESTA_tipo, S_COMPUESTA_ret);
@@ -1296,7 +1299,7 @@ public class Analizador_Sint_Sem {
         } else
             throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, columna, lineaSF, columnaSF,
                     "Lista de argumentos mal formada (L)", token.getTipo(),
-                    "NEGACION, ID, PARENTESIS, CADENA, ENTERO, REAL", codigoFuente, token.getLex(), token.getAtributo(), null);
+                    "NEGACION, 'identificador', PARENTESIS, CADENA, ENTERO, REAL", codigoFuente, token.getLex(), token.getAtributo(), null);
 
         return L_tipo;
     }
@@ -1369,7 +1372,7 @@ public class Analizador_Sint_Sem {
         } else
             throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, columna, lineaSF, columnaSF,
                     "Después de 'return' debe venir una expresión o un ';' (X)", token.getTipo(),
-                    "NEGACION, ID, PARENTESIS, CADENA, ENTERO, REAL, PUNTO_Y_COMA", codigoFuente, token.getLex(), token.getAtributo(), null);
+                    "NEGACION, 'identificador', PARENTESIS, CADENA, ENTERO, REAL, PUNTO_Y_COMA", codigoFuente, token.getLex(), token.getAtributo(), null);
 
         return X_tipo;
     }
@@ -1422,7 +1425,7 @@ public class Analizador_Sint_Sem {
         } else
             throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, columna, lineaSF, columnaSF,
                     "Leyendo tipo de dato (int, float, boolean, string) (T)", token.getTipo(),
-                    "INT, FLOAT, BOOLEAN, STRING", codigoFuente, token.getLex(), token.getAtributo(), null);
+                    "int, float, boolean, string", codigoFuente, token.getLex(), token.getAtributo(), null);
 
         return new Pair<String, Integer>(T_tipo, T_ancho);
     }
@@ -1467,7 +1470,7 @@ public class Analizador_Sint_Sem {
             INI_tipo = "tipo_ok";
         } else
             throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, columna, lineaSF, columnaSF,
-                    "Inicialización inválida en el 'for' (INI)", token.getTipo(), "ID, PUNTO_Y_COMA", codigoFuente,
+                    "Inicialización inválida en el 'for' (INI)", token.getTipo(), "'identificador', PUNTO_Y_COMA", codigoFuente,
                     token.getLex(), token.getAtributo(), null);
 
         return INI_tipo;
@@ -1500,17 +1503,17 @@ public class Analizador_Sint_Sem {
             // Accion Semantica
             if (A_tipo.equals("tipo_ok")) {
                 if (!idTipo.equals(E_tipo))
-                    errSem("Asignación en FOR incorrecto",
+                    errSem("Asignación en sentencia de bucle 'for' incorrecto",
                             "El id tiene tipo " + idTipo + " y no es compatible con el tipo " + E_tipo);
 
             } else {
                 if (A_tipo.equals("logico")) {
                     if (!E_tipo.equals("logico"))
-                        errSem("Asignacion logico en FOR incorrecto",
+                        errSem("Asignacion logico en sentencia de bucle 'for' incorrecto",
                                 "La asignación lógica solo se puede aplicar a expresiones lógicas (se ha introducido tipo "
                                         + E_tipo + ")");
                     if (!idTipo.equals("logico"))
-                        errSem("Asignación lógica a id en FOR incorrecto",
+                        errSem("Asignación lógica a id en sentencia de bucle 'for' incorrecto",
                                 "El identificador " + idLex + " debe ser de tipo logico, pero es " + idTipo);
                 }
             }
@@ -1521,7 +1524,7 @@ public class Analizador_Sint_Sem {
             ACTU_tipo = "tipo_ok";
         } else
             throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, columna, lineaSF, columnaSF,
-                    "Actualización inválida en el 'for' (ACTU)", token.getTipo(), "ID, PARENTESIS", codigoFuente,
+                    "Actualización inválida en el 'for' (ACTU)", token.getTipo(), "'identificador', PARENTESIS", codigoFuente,
                     token.getLex(), token.getAtributo(), null);
 
         return ACTU_tipo;
@@ -1584,7 +1587,7 @@ public class Analizador_Sint_Sem {
 
         } else
             throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, columna, lineaSF, columnaSF,
-                    "Error en el bloque de codigo", token.getTipo(), "Sentencia (ID, WRITE, READ, RETURN, LET, IF, FOR) o fin de bloque (\'}\')",
+                    "Error en el bloque de codigo", token.getTipo(), "Sentencia ('identificador', sentencia escribir 'write', sentencia leer 'read', sentencia de retorno de funcion 'return', declaracion de variable 'let', sentencia condicional 'if', sentencia de bucle 'for') o fin de bloque (\'}\')",
                     codigoFuente, token.getLex(), token.getAtributo(), null);
 
         return new Pair<String, String>(C_tipo, C_ret);
@@ -1619,7 +1622,7 @@ public class Analizador_Sint_Sem {
 
         } else
             throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, columna, lineaSF, columnaSF,
-                    "Se esperaba un tipo de retorno o 'void' (H)", token.getTipo(), "INT, FLOAT, BOOLEAN, STRING, VOID",
+                    "Se esperaba un tipo de retorno o 'void' (H)", token.getTipo(), "int, float, boolean, string, VOID",
                     codigoFuente, token.getLex(), token.getAtributo(), null);
 
         return H_tipo;
@@ -1680,7 +1683,7 @@ public class Analizador_Sint_Sem {
         } else
             throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, columna, lineaSF, columnaSF,
                     "Lista de parámetros mal formada o incompleta (B)", token.getTipo(),
-                    "INT, FLOAT, BOOLEAN, STRING, VOID", codigoFuente, token.getLex(), token.getAtributo(), null);
+                    "int, float, boolean, string, VOID", codigoFuente, token.getLex(), token.getAtributo(), null);
 
         return B_tipo;
     }
