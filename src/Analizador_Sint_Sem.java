@@ -529,7 +529,7 @@ public class Analizador_Sint_Sem {
 
             // Accion Semantica
             if (!E1_tipo.equals("logico"))
-                errSem("Error && logico", "Solo se puede comparar lógicos");
+                errSem("Error en expresion logica '&&' ", "Solo se puede comparar 2 lógicos y el segundo valor es " + E1_tipo);
             E_AND_tipo = "logico";
 
         }
@@ -573,10 +573,10 @@ public class Analizador_Sint_Sem {
                 E1_tipo = E2_tipo;
             else {
                 if (!(E2_tipo.equals("real") || E2_tipo.equals("entero")))
-                    errSem("Error Relacional", "Solo se puede comparar reales ó enteros");
+                    errSem("Error en expresion relacional", "Solo se puede comparar 2 reales ó 2 enteros");
 
                 if (!(E2_tipo.equals(E1_REL_tipo)))
-                    errSem("Error Relacional", "No se puede comparar tipo " + E2_tipo + " y " + E1_REL_tipo);
+                    errSem("Error en expresion relacional", "No se puede comparar tipo " + E2_tipo + " y " + E1_REL_tipo + "deben de ser del mismo tipo");
 
                 E1_tipo = "logico";
             }
@@ -609,11 +609,11 @@ public class Analizador_Sint_Sem {
 
             // Accion Semantica
             if (!((E2_tipo.equals("real") || E2_tipo.equals("entero"))))
-                errSem("Desigualdad mayor incorrecta", "Solo se pueden comparar real ó entero (se introdujo "+ E2_tipo+")");
+                errSem("Desigualdad mayor incorrecta", "Solo se pueden comparar 2 reales ó 2 enteros (se introdujo "+ E2_tipo+")");
 
             // Si E1_REL1 es tipo_ok entonces no hay mas comparaciones encadenadas
             if (!(E1_REL1_tipo.equals("tipo_ok")))
-                errSem("Desigualdad mayor incorrecta", "No se puede hacer encadenamientos de comparaciones ");
+                errSem("Desigualdad mayor incorrecta", "No se puede hacer 2 comparaciones seguidas");
 
             E1_REL_tipo = E2_tipo;
 
@@ -675,10 +675,10 @@ public class Analizador_Sint_Sem {
                 E2_tipo = E3_tipo;
             else {
                 if (!(E3_tipo.equals("real") || E3_tipo.equals("entero")))
-                    errSem("Error aritmetico", "Solo puede sumar o restar reales ó enteros (se introdujo "+ E3_tipo+")");
+                    errSem("Error en expresion aritmetica", "Solo puede sumar o restar 2 reales ó 2 enteros (se introdujo "+ E3_tipo+")");
 
                 if (!(E2_ARIT_tipo.equals(E3_tipo)))
-                    errSem("Error aritmetico", "No hay conversion de tipos entre " + E3_tipo + " y " + E2_ARIT_tipo);
+                    errSem("Error en expresion aritmetica", "No hay conversion de tipos entre " + E3_tipo + " y " + E2_ARIT_tipo);
 
                 E2_tipo = E3_tipo;
             }
@@ -711,11 +711,11 @@ public class Analizador_Sint_Sem {
 
             // Accion Semantica
             if (!((E3_tipo.equals("real") || E3_tipo.equals("entero"))))
-                errSem("Suma incorrecta", "Solo se pueden sumar real ó entero (se introdujo "+ E3_tipo+")");
+                errSem("Expresion suma incorrecta", "Solo se pueden sumar real ó entero (se introdujo "+ E3_tipo+")");
 
             // Si E2_ARIT es tipo_ok entonces no hay mas sumas encadenadas
             if (!(E2_ARIT1_tipo.equals(E3_tipo) || E2_ARIT1_tipo.equals("tipo_ok")))
-                errSem("Suma incorrecta", "No hay conversion de tipos entre " + E2_ARIT1_tipo + " y " + E3_tipo);
+                errSem("Expresion suma incorrecta", "No hay conversion de tipos entre " + E2_ARIT1_tipo + " y " + E3_tipo);
 
             E2_ARIT_tipo = E3_tipo;
 
@@ -730,11 +730,11 @@ public class Analizador_Sint_Sem {
 
             // Accion Semantica
             if (!((E3_tipo.equals("real") || E3_tipo.equals("entero"))))
-                errSem("Resta incorrecta", "Solo se pueden restar real ó entero (se introdujo "+ E3_tipo+")");
+                errSem("Expresion resta incorrecta", "Solo se pueden restar real ó entero (se introdujo "+ E3_tipo+")");
 
             // Si E2_ARIT es tipo_ok entonces no hay mas restas encadenadas
             if (!(E2_ARIT1_tipo.equals(E3_tipo) || E2_ARIT1_tipo.equals("tipo_ok")))
-                errSem("Resta incorrecta", "No hay conversion de tipos entre " + E2_ARIT1_tipo + " y " + E3_tipo);
+                errSem("Expresion resta incorrecta", "No hay conversion de tipos entre " + E2_ARIT1_tipo + " y " + E3_tipo);
 
             E2_ARIT_tipo = E3_tipo;
 
@@ -776,7 +776,7 @@ public class Analizador_Sint_Sem {
             // Accion Semantica
             if (!E31_tipo.equals("logico"))
                 errSem("Negación incorrecta",
-                        "Solo se puede negar una expresión lógica (se esta intentando negar una expresión tipo " + E31_tipo+")");
+                        "Solo se puede negar una expresión lógica (se esta intentando negar una expresión de tipo " + E31_tipo+")");
 
             E3_tipo = "logico";
         }
