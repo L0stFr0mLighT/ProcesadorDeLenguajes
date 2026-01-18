@@ -29,8 +29,6 @@ public class Analizador_Sint_Sem {
     private List<String> codigoFuente;
     private int contTabAct;
     private int contTabSig;
-    private int contTabAct;
-    private int contTabSig;
 
     // Variable para la analizador semantico
     private TS_Gestor gestorTs;
@@ -58,7 +56,6 @@ public class Analizador_Sint_Sem {
     private int errLin;
     private int errCol;
     private int errLen;
-    private int errTab;
     private int errTab;
 
     /**
@@ -109,7 +106,6 @@ public class Analizador_Sint_Sem {
     private void errSem(String contexto, String desc) {
         throw new ErrSemantico(
                 errLin, errCol, // (x,y) -> indicara la linea y columna del error
-                errLin, errCol+1-errTab-3+errTab*8, // donde empiezan los ^ (subrayado del error)
                 errLin, errCol+1-errTab-3+errTab*8, // donde empiezan los ^ (subrayado del error)
                 lineaSF, columnaSF, // checkpoint para el CONTEXTO del error
                 contexto,
@@ -241,9 +237,6 @@ public class Analizador_Sint_Sem {
         Pair<Pair<Token,Integer>, Pair<Integer, Integer>> par = aLex.nextTokenWithPos();
         contTabSig = par.getLeft().getRight();
         tokenSig = par.getLeft().getLeft();
-        Pair<Pair<Token,Integer>, Pair<Integer, Integer>> par = aLex.nextTokenWithPos();
-        contTabSig = par.getLeft().getRight();
-        tokenSig = par.getLeft().getLeft();
         lineaSig = par.getRight().getLeft();
         columnaSig = par.getRight().getRight();
 
@@ -267,15 +260,9 @@ public class Analizador_Sint_Sem {
         Pair<Pair<Token,Integer>, Pair<Integer, Integer>> p1 = aLex.nextTokenWithPos();
         contTabAct = p1.getLeft().getRight();
         token = p1.getLeft().getLeft();
-        Pair<Pair<Token,Integer>, Pair<Integer, Integer>> p1 = aLex.nextTokenWithPos();
-        contTabAct = p1.getLeft().getRight();
-        token = p1.getLeft().getLeft();
         linea = p1.getRight().getLeft();
         columna = p1.getRight().getRight();
 
-        Pair<Pair<Token,Integer>, Pair<Integer, Integer>> p2 = aLex.nextTokenWithPos();
-        contTabSig = p2.getLeft().getRight();
-        tokenSig = p2.getLeft().getLeft();
         Pair<Pair<Token,Integer>, Pair<Integer, Integer>> p2 = aLex.nextTokenWithPos();
         contTabSig = p2.getLeft().getRight();
         tokenSig = p2.getLeft().getLeft();
