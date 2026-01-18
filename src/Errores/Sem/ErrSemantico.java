@@ -10,13 +10,13 @@ public class ErrSemantico extends Err{
     
     public ErrSemantico (int lineaAnterior, int columnaAnterior,int lineaSiguiente, int columnaSiguiente, int lineaS, 
         int columnaS, String contexto, String desc, List<String> codigoFuente, String lexTk){
-        super(lineaAnterior, columnaAnterior,lineaSiguiente,columnaSiguiente,lineaS, columnaS,TipoError.SEMANTICA,CodError.ERR_SEMANTICO.ordinal(),
+        super(lineaAnterior, columnaAnterior,lineaSiguiente,columnaSiguiente,lineaS, columnaS,TipoError.SEMANTICO,CodError.ERR_SEMANTICO.ordinal(),
        contexto+"\n"+desc, codigoFuente, longtitudErr(lexTk));
     }
 
     public ErrSemantico (int lineaAnterior, int columnaAnterior,int lineaSiguiente, int columnaSiguiente, int lineaS, 
         int columnaS, String contexto, String desc, List<String> codigoFuente, int longitudErr){
-        super(lineaAnterior, columnaAnterior,lineaSiguiente,columnaSiguiente,lineaS, columnaS,TipoError.SEMANTICA,CodError.ERR_SEMANTICO.ordinal(),
+        super(lineaAnterior, columnaAnterior,lineaSiguiente,columnaSiguiente,lineaS, columnaS,TipoError.SEMANTICO,CodError.ERR_SEMANTICO.ordinal(),
         contexto+"\n"+desc, codigoFuente, longitudErr);
     }
 

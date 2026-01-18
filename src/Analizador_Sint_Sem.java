@@ -152,7 +152,7 @@ public class Analizador_Sint_Sem {
         for (int i = 0; i < paramType.length; i++) {
             res += paramType[i];
             if (i + 1 != paramType.length)
-                res += " && ";
+                res += ", ";
         }
         return res;
     }
@@ -463,8 +463,8 @@ public class Analizador_Sint_Sem {
             } else {
                 // función no void: return expr debe coincidir con H_tipo
                 if (!H_tipo.equals(C_ret)) {
-                    errSem("Return tipo en función incorrecto",
-                            "La función " + idLex + " es tipo " + H_tipo + " y se ha returnado tipo " + C_ret);
+                    errSem("Return de un tipo incorrecto en una funcion",
+                            "La función " + idLex + " devuelve un tipo " + H_tipo + " y se ha retornado un tipo " + C_ret);
                 }
             }
         }

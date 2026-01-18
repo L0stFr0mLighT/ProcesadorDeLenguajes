@@ -71,5 +71,4 @@ public class Procesador {
         }
         frame.dispose();
     }
-       
 }
