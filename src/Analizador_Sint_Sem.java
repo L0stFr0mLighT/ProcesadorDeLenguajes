@@ -27,8 +27,6 @@ public class Analizador_Sint_Sem {
     private int lineaSF;
     private int columnaSF;
     private List<String> codigoFuente;
-    private int contTabAct;
-    private int contTabSig;
 
     // Variable para la analizador semantico
     private TS_Gestor gestorTs;
@@ -240,15 +238,12 @@ public class Analizador_Sint_Sem {
         columnaAnterior = columna;
 
         // el siguiente pasa a ser el actual
-        contTabAct = contTabSig;
-        contTabAct = contTabSig;
         token = tokenSig;
         linea = lineaSig;
         columna = columnaSig;
 
         // leo un nuevo "siguiente"
         Pair<Pair<Token,Integer>, Pair<Integer, Integer>> par = aLex.nextTokenWithPos();
-        contTabSig = par.getLeft().getRight();
         tokenSig = par.getLeft().getLeft();
         lineaSig = par.getRight().getLeft();
         columnaSig = par.getRight().getRight();
@@ -271,13 +266,11 @@ public class Analizador_Sint_Sem {
 
         // Precarga de 2 tokens (necesario para tactica magica de looking ahead)
         Pair<Pair<Token,Integer>, Pair<Integer, Integer>> p1 = aLex.nextTokenWithPos();
-        contTabAct = p1.getLeft().getRight();
         token = p1.getLeft().getLeft();
         linea = p1.getRight().getLeft();
         columna = p1.getRight().getRight();
 
         Pair<Pair<Token,Integer>, Pair<Integer, Integer>> p2 = aLex.nextTokenWithPos();
-        contTabSig = p2.getLeft().getRight();
         tokenSig = p2.getLeft().getLeft();
         lineaSig = p2.getRight().getLeft();
         columnaSig = p2.getRight().getRight();
