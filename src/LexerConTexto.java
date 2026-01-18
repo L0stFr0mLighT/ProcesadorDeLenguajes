@@ -57,7 +57,7 @@ public class LexerConTexto {
                 salida += token.getNum();
                 break;
             case TYPE_ENTERO:
-                salida += (int) token.getNum();
+                salida += (int) token.getAtributo();
                 break;
             default:
                 // Si tiene atributo (ej: posición en TS) lo imprime; si no, deja vacío

@@ -409,7 +409,7 @@ public class Analizador_Lexico {
                     case 'D':
                         // EXCEPTION: entero demasiado grande
                         if (num >= 32767) {
-                            lex = "" + (long) num;
+                            lex = "" + (int) num;
                             throw new IntTooLargeErr(lineaActual, columna, (int) num, codigoFuente, lex.length());
                         }
                         token = new Token(TipoToken.TYPE_ENTERO, (Integer) (int) num);
