@@ -36,6 +36,7 @@ public class Analizador_Lexico {
     private int columna;
     private boolean primeraLectura = true;
     private List<String> codigoFuente;
+    private int contTab = 0;
 
     public Analizador_Lexico(String ruta, TS_Gestor gestor, List<String> codigoFuente) {
         this.archivo = new File(ruta);
@@ -332,7 +333,7 @@ public class Analizador_Lexico {
     // CUERPO DEL ANALIZADOR LEXICO
     // ------------------------------------------------------------------------------------------
 
-    public Pair<Token, Pair<Integer, Integer>> iniciar() throws Err {
+    public Pair<Pair<Token,Integer>, Pair<Integer, Integer>> iniciar() throws Err {
         Token token = null;
         Integer charEnum;
         int countDecimales = 0;
@@ -382,7 +383,7 @@ public class Analizador_Lexico {
                 // Si el caracter leido no es aceptado (transicion inexistente)
                 if (estado_destino == null) {
                     if (estado_actual == 9) {
-                        throw new CadenaNoTerminadaErr(lineaActual, columna, lex, codigoFuente, lex.length());
+                        throw new CadenaNoTerminadaErr(lineaActual, columna, lex, codigoFuente, lex.length(), contTab);
                     } else if (estado_actual == 2 || estado_actual == 3) {
                         throw new ComentarioNoTerminadoErr(lineaActual, columna, codigoFuente);
                     } else
@@ -408,7 +409,7 @@ public class Analizador_Lexico {
                     case 'D':
                         // EXCEPTION: entero demasiado grande
                         if (num >= 32767) {
-                            lex = "" + (int) num;
+                            lex = "" + (long) num;
                             throw new IntTooLargeErr(lineaActual, columna, (int) num, codigoFuente, lex.length());
                         }
                         token = new Token(TipoToken.TYPE_ENTERO, (Integer) (int) num);
@@ -598,7 +599,7 @@ public class Analizador_Lexico {
         } catch (IOException e) {
             e.printStackTrace();
         }
-        return new Pair<>(token, new Pair<>(lineaActual, columna));
+        return new Pair<>(new Pair<>(token,contTab), new Pair<>(lineaActual, columna));
     }
 
     // Funcion auxiliar para identificar caracter
@@ -674,7 +675,13 @@ public class Analizador_Lexico {
         else if (cIntLeido == 10) {
             columna = 0;
             lineaActual++;
+            contTab = 0;
         }
+
+        if(cIntLeido == (int)'\t'){
+            contTab++;
+        }
+
         return (char) cIntLeido;
     }
 }

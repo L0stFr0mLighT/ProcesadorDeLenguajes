@@ -13,7 +13,7 @@ public abstract class Err extends RuntimeException {
     private static String constructorMensaje (int lineaAntigua, int columnaAntigua, int lineaSiguiente, int columnaSiguiente, int lineaS, int columnaS, TipoError tipoError, int codError, String descrip, List<String> codigoFuente, int longitudErr){
         
         String mensaje = "\n------ ERROR " + tipoError + " ------\n";
-        mensaje += "(" + lineaAntigua + "," + columnaAntigua + ") " +"ERR-" +codError + ": ";
+        mensaje += "(" + lineaAntigua + "," + columnaAntigua + ") " +"ERR-" +codError + ": "; //linea y columna de token ya consumido (ultimo bueno)
         mensaje += descrip + "\n";
         mensaje += "\nCONTEXTO DEL ERROR:\n";
         // Asegurar rangos válidos
@@ -28,10 +28,10 @@ public abstract class Err extends RuntimeException {
             //Imprimimos linea de forma: " xx| texto" (Espero que no haya más de 99 líneas :) )
             mensaje += String.format("%2d| %s\n", linea, texto);
 
-            // Línea con el error = marcar ^
+            // marcar ^
             if (linea == lineaSiguiente) {
 
-                mensaje += "    "; // espacio alineado con el margen "xx| "
+                mensaje += "   "; // espacio alineado con el margen "xx|"
 
                 // Espacios hasta la columna donde ocurrió el error
                 for (int i = 1; i < columnaSiguiente-1; i++) mensaje += " ";

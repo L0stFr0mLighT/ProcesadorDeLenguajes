@@ -19,9 +19,9 @@ public class LexerConTexto {
      * escribe en
      * archivo
      */
-    public Pair<Token, Pair<Integer, Integer>> nextTokenWithPos() {
+    public Pair<Pair<Token,Integer>, Pair<Integer, Integer>> nextTokenWithPos() {
 
-        Pair<Token, Pair<Integer, Integer>> par = aLex.iniciar();
+        Pair<Pair<Token,Integer>, Pair<Integer, Integer>> par = aLex.iniciar();
         return par;
     }
 
