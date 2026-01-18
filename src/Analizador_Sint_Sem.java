@@ -494,10 +494,10 @@ public class Analizador_Sint_Sem {
                 E_tipo = E1_tipo;
             } else {
                 if (!(E1_tipo.equals("logico")))
-                    errSem("Error logico", "Solo se puede comparar lógicos");
+                    errSem("Error en expresion logica '&&'", "No se puede comparar tipo " + E1_tipo + " y " + E_AND_tipo);
 
                 if (!(E_AND_tipo.equals("logico")))
-                    errSem("Error logico", "No se puede comparar tipo " + E1_tipo + "y " + E_AND_tipo);
+                    errSem("Error en expresion logica", "No se puede comparar tipo " + E1_tipo + " y " + E_AND_tipo);
 
                 E_tipo = "logico";
             }
