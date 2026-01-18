@@ -366,9 +366,11 @@ public class Analizador_Lexico {
                     } else if (estado_actual == 2 || estado_actual == 3) {
                         accion = 'A';
                         estado_destino = 2;
-                    } else
-                        throw new InvalidCaracterErr(lineaActual, columna, estado_actual, carActual, codigoFuente);
-
+                    } else{
+                                                System.out.println(lineaActual);
+                        System.out.println(columna);
+                        throw new InvalidCaracterErr(lineaActual, columna+2, estado_actual, carActual, codigoFuente);
+                    }
                 }
                 /*
                  * En caso de existir caracter, descomponemos en:
@@ -386,8 +388,9 @@ public class Analizador_Lexico {
                         throw new CadenaNoTerminadaErr(lineaActual, columna, lex, codigoFuente, lex.length(), contTab);
                     } else if (estado_actual == 2 || estado_actual == 3) {
                         throw new ComentarioNoTerminadoErr(lineaActual, columna, codigoFuente);
-                    } else
-                        throw new InvalidCaracterErr(lineaActual, columna, estado_actual, carActual, codigoFuente);
+                    } else{
+                        throw new InvalidCaracterErr(lineaActual, columna+2, estado_actual, carActual, codigoFuente);
+                    }
                 }
 
                 switch (accion) {
@@ -409,7 +412,7 @@ public class Analizador_Lexico {
                     case 'D':
                         // EXCEPTION: entero demasiado grande
                         if (num >= 32767) {
-                            lex = "" + (long) num;
+                            lex = "" + (int) num;
                             throw new IntTooLargeErr(lineaActual, columna, (int) num, codigoFuente, lex.length());
                         }
                         token = new Token(TipoToken.TYPE_ENTERO, (Integer) (int) num);

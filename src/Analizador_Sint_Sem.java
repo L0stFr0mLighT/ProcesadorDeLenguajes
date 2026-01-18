@@ -56,7 +56,6 @@ public class Analizador_Sint_Sem {
     private int errLin;
     private int errCol;
     private int errLen;
-    private int errTab;
 
     /**
      * Metodo para marcar inicio de sentencia -> imprimir CONTEXTO
@@ -73,10 +72,8 @@ public class Analizador_Sint_Sem {
      */
     private void marcaErrToken(int len) {
         errLin = linea;
-        errCol = Math.max(1, columna - len); //ignoro los espacio que hay delante (si hay)
+        errCol = Math.max(1, columna - len); //voy a principio de token
         errLen = len;
-        errTab = contTabAct;
-        errTab = contTabAct;
     }
 
     /**
@@ -97,6 +94,20 @@ public class Analizador_Sint_Sem {
         marcaErrToken(pal.length());
     }
 
+    private static int calculoCol(String contenido, int col, int tabWidth) {
+        int end = Math.max(0, Math.min(contenido.length(), col));
+        int w = 0;
+        for (int i = 0; i < end; i++) {
+            char ch = contenido.charAt(i);
+            if (ch == '\t') {
+                w = ((w / tabWidth) + 1) * tabWidth;  // siguiente tab stop
+            } else {
+                w += 1; // espacio o carácter normal
+            }
+        }
+        return w + 2; // devuelve columna visual 1-based
+    }
+
     /**
      * Metodo para lanzar error sem. con las marcas guardadas anteriormente
      * 
@@ -104,9 +115,11 @@ public class Analizador_Sint_Sem {
      * @param desc     descripcion con mas detalles del error
      */
     private void errSem(String contexto, String desc) {
+        String linea = codigoFuente.get(errLin - 1);
+        int colNorm = calculoCol(linea, errCol, 8);
         throw new ErrSemantico(
                 errLin, errCol, // (x,y) -> indicara la linea y columna del error
-                errLin, errCol+1-errTab-3+errTab*8, // donde empiezan los ^ (subrayado del error)
+                errLin, colNorm, // donde empiezan los ^ (subrayado del error)
                 lineaSF, columnaSF, // checkpoint para el CONTEXTO del error
                 contexto,
                 desc,
@@ -273,8 +286,8 @@ public class Analizador_Sint_Sem {
         I();
 
         // Si no hemos consumido todo el codigo fuente, error
-        if (token.getTipo() != TipoToken.TYPE_EOF) {
-            throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, linea!=lineaSig?columna-contTabAct-3+contTabAct*8:columna-contTabSig-3+contTabSig*8, lineaSF, columnaSF, "I",
+        if (token.getTipo() != TipoToken.TYPE_EOF) {//calculoCol(codigoFuente.get(linea != lineaSig?lineaSig-1:linea-1), columna, 8)
+            throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, calculoCol(codigoFuente.get(linea != lineaSig?lineaSig-1:linea-1), columna, 8), lineaSF, columnaSF, "I",
                     token.getTipo(), "EOF", codigoFuente, token.getLex(), token.getAtributo(), null);
         }
         return parse;
@@ -299,7 +312,7 @@ public class Analizador_Sint_Sem {
         } else {
             // Token_Inesperado gestiona internamente el mensaje a imprimir segun si debe
             // comprobar atributo o no
-            throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, linea!=lineaSig?columna-contTabAct-3+contTabAct*8:columna-contTabSig-3+contTabSig*8, lineaSF, columnaSF,
+            throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, calculoCol(codigoFuente.get(linea != lineaSig?lineaSig-1:linea-1), columna, 8), lineaSF, columnaSF,
                     contexto, token.getTipo(), t.getTipo(), codigoFuente, token.getLex(),token.getAtributo(), t.getAtributo());
         }
     }
@@ -336,7 +349,7 @@ public class Analizador_Sint_Sem {
             parse = parse.concat("4 ");
             equipara(new Token(TipoToken.TYPE_EOF, (Integer) null),"Archivo no terminado");
         } else
-            throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, linea!=lineaSig?columna-contTabAct-3+contTabAct*8:columna-contTabSig-3+contTabSig*8, lineaSF, columnaSF,
+            throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, calculoCol(codigoFuente.get(linea != lineaSig?lineaSig-1:linea-1), columna, 8), lineaSF, columnaSF,
                     "Se esperaba una sentencia, una declaración de función o el fin del archivo", token.getTipo(),
                     "'identificador', sentencia escribir 'write', sentencia leer 'read', sentencia de retorno de funcion 'return', declaracion de variable 'let', sentencia condicional 'if', sentencia de bucle 'for', declaracion de funcion 'function', EOF", 
                     codigoFuente, token.getLex(), token.getAtributo(),null);
@@ -367,7 +380,7 @@ public class Analizador_Sint_Sem {
         }
 
         else
-            throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, linea!=lineaSig?columna-contTabAct-3+contTabAct*8:columna-contTabSig-3+contTabSig*8, lineaSF, columnaSF,
+            throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, calculoCol(codigoFuente.get(linea != lineaSig?lineaSig-1:linea-1), columna, 8), lineaSF, columnaSF,
                     "Sentencia incorrecta", token.getTipo(), "'identificador', sentencia escribir 'write', sentencia leer 'read', sentencia de retorno de funcion 'return', declaracion de variable 'let', sentencia condicional 'if', sentencia de bucle 'for'",
                     codigoFuente, token.getLex(), token.getAtributo(),null);
 
@@ -502,7 +515,7 @@ public class Analizador_Sint_Sem {
                 E_tipo = "logico";
             }
         } else
-            throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, linea!=lineaSig?columna-contTabAct-3+contTabAct*8:columna-contTabSig-3+contTabSig*8, lineaSF, columnaSF,
+            throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, calculoCol(codigoFuente.get(linea != lineaSig?lineaSig-1:linea-1), columna, 8), lineaSF, columnaSF,
                     "Se esperaba el inicio de una expresión", token.getTipo(),
                     "operador de negacion '!', 'identificador', parentesis abierto '(', cadena, constante entera, constante real", codigoFuente, token.getLex(), token.getAtributo(), null);
 
@@ -542,7 +555,7 @@ public class Analizador_Sint_Sem {
             E_AND_tipo = "tipo_ok";
 
         } else
-            throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, linea!=lineaSig?columna-contTabAct-3+contTabAct*8:columna-contTabSig-3+contTabSig*8, lineaSF, columnaSF,
+            throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, calculoCol(codigoFuente.get(linea != lineaSig?lineaSig-1:linea-1), columna, 8), lineaSF, columnaSF,
                     "Expresion no terminada", token.getTipo(), 
                     "operador logico '&&', ';', parentesis cerrado ')', ','",
                     codigoFuente, token.getLex(), token.getAtributo(), null);
@@ -581,7 +594,7 @@ public class Analizador_Sint_Sem {
                 E1_tipo = "logico";
             }
         } else
-            throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, linea!=lineaSig?columna-contTabAct-3+contTabAct*8:columna-contTabSig-3+contTabSig*8, lineaSF, columnaSF,
+            throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, calculoCol(codigoFuente.get(linea != lineaSig?lineaSig-1:linea-1), columna, 8), lineaSF, columnaSF,
                     "Expresión incompleta después de operador logico", token.getTipo(),
                     "operador de negacion '!', 'identificador', parentesis abierto '(', cadena, constante entera, constante real",
                     codigoFuente, token.getLex(), token.getAtributo(), null);
@@ -645,7 +658,7 @@ public class Analizador_Sint_Sem {
             // Accion Semantica
             E1_REL_tipo = "tipo_ok";
         } else
-            throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, linea!=lineaSig?columna-contTabAct-3+contTabAct*8:columna-contTabSig-3+contTabSig*8, lineaSF, columnaSF,
+            throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, calculoCol(codigoFuente.get(linea != lineaSig?lineaSig-1:linea-1), columna, 8), lineaSF, columnaSF,
                     "Expresion no terminada", token.getTipo(), ">, <, operador logico '&&', ) , ',', ';'",
                     codigoFuente, token.getLex(), token.getAtributo(), null);
 
@@ -684,7 +697,7 @@ public class Analizador_Sint_Sem {
             }
 
         } else
-            throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, linea!=lineaSig?columna-contTabAct-3+contTabAct*8:columna-contTabSig-3+contTabSig*8, lineaSF, columnaSF,
+            throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, calculoCol(codigoFuente.get(linea != lineaSig?lineaSig-1:linea-1), columna, 8), lineaSF, columnaSF,
                     "Expresión aritmética incompleta", token.getTipo(),
                     "operador de negacion '!', 'identificador', parentesis abierto '(', cadena, constante entera, constante real", codigoFuente, token.getLex(), token.getAtributo(), null);
 
@@ -748,7 +761,7 @@ public class Analizador_Sint_Sem {
             // Accion Semantica
             E2_ARIT_tipo = "tipo_ok";
         } else{
-            throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, linea!=lineaSig?columna-contTabAct-3+contTabAct*8:columna-contTabSig-3+contTabSig*8, lineaSF, columnaSF,
+            throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, calculoCol(codigoFuente.get(linea != lineaSig?lineaSig-1:linea-1), columna, 8), lineaSF, columnaSF,
                     "Expresion no terminada", token.getTipo(),
                     "operador aritmetico '+' o '-', operador logico '&&', parentesis cerrado ')', ',', ';', operador relacional '<' o '>'", codigoFuente, token.getLex(), token.getAtributo(), null);
             }
@@ -876,7 +889,7 @@ public class Analizador_Sint_Sem {
             E3_tipo = "real";
 
         } else
-            throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, linea!=lineaSig?columna-contTabAct-3+contTabAct*8:columna-contTabSig-3+contTabSig*8, lineaSF, columnaSF,
+            throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, calculoCol(codigoFuente.get(linea != lineaSig?lineaSig-1:linea-1), columna, 8), lineaSF, columnaSF,
                     "Expresión no válida o incompleta.", token.getTipo(),
                     "operador de negacion '!', 'identificador', parentesis abierto '(', cadena, constante entera, constante real", 
                     codigoFuente, token.getLex(), token.getAtributo(), null);
@@ -917,7 +930,7 @@ public class Analizador_Sint_Sem {
             E4_tipo.addLast("vacio"); // Para simbolizar la no llamada a función, pongo un solo elemento "vacio"
 
         } else
-            throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, linea!=lineaSig?columna-contTabAct-3+contTabAct*8:columna-contTabSig-3+contTabSig*8, lineaSF, columnaSF,
+            throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, calculoCol(codigoFuente.get(linea != lineaSig?lineaSig-1:linea-1), columna, 8), lineaSF, columnaSF,
                     "Después del identificador se esperaba los parametros de una funcion '(...)' o fin de la expresion", token.getTipo(),
                     "parentesis abierto '(', parentesis cerrado ')', operador logico '&&', ',', ';', operador relacional '<' o '>', operador aritmetico '+' o '-'", codigoFuente, token.getLex(), token.getAtributo(), null);
 
@@ -1062,7 +1075,7 @@ public class Analizador_Sint_Sem {
             S_SIMPLE_ret = X_tipo;
 
         } else
-            throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, linea!=lineaSig?columna-contTabAct-3+contTabAct*8:columna-contTabSig-3+contTabSig*8, lineaSF, columnaSF,
+            throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, calculoCol(codigoFuente.get(linea != lineaSig?lineaSig-1:linea-1), columna, 8), lineaSF, columnaSF,
                     "Sentencia simple incorrecta", token.getTipo(), "'identificador', sentencia escribir 'write', sentencia leer 'read', sentencia de retorno de funcion 'return'", codigoFuente,
                     token.getLex(), token.getAtributo(), null);
 
@@ -1190,7 +1203,7 @@ public class Analizador_Sint_Sem {
             S_COMPUESTA_ret = C_ret;
 
         } else
-            throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, linea!=lineaSig?columna-contTabAct-3+contTabAct*8:columna-contTabSig-3+contTabSig*8, lineaSF, columnaSF,
+            throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, calculoCol(codigoFuente.get(linea != lineaSig?lineaSig-1:linea-1), columna, 8), lineaSF, columnaSF,
                     "Sentencia compuesta incorrecta", token.getTipo(), "declaracion de variable 'let', sentencia condicional 'if', sentencia de bucle 'for'",
                     codigoFuente, token.getLex(), token.getAtributo(), null);
 
@@ -1238,7 +1251,7 @@ public class Analizador_Sint_Sem {
             ASIGFUN_tipo = new NodePositionList<>(L_tipo);
 
         } else
-            throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, linea!=lineaSig?columna-contTabAct-3+contTabAct*8:columna-contTabSig-3+contTabSig*8, lineaSF, columnaSF,
+            throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, calculoCol(codigoFuente.get(linea != lineaSig?lineaSig-1:linea-1), columna, 8), lineaSF, columnaSF,
                     "Asignacion o llamada a función '(...)' incorrecta", token.getTipo(),
                     "simbolo de asignacion '=' o '|=', parentesis abierto '('", codigoFuente, token.getLex(), token.getAtributo(), null);
 
@@ -1272,7 +1285,7 @@ public class Analizador_Sint_Sem {
             A_tipo = "logico";
 
         } else
-            throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, linea!=lineaSig?columna-contTabAct-3+contTabAct*8:columna-contTabSig-3+contTabSig*8, lineaSF, columnaSF,
+            throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, calculoCol(codigoFuente.get(linea != lineaSig?lineaSig-1:linea-1), columna, 8), lineaSF, columnaSF,
                     "Asignacion incorrecta", token.getTipo(), "simbolo de asignacion '=' o '|='", 
                     codigoFuente, token.getLex(), token.getAtributo(), null);
 
@@ -1311,7 +1324,7 @@ public class Analizador_Sint_Sem {
             L_tipo = new NodePositionList<String>();
 
         } else
-            throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, linea!=lineaSig?columna-contTabAct-3+contTabAct*8:columna-contTabSig-3+contTabSig*8, lineaSF, columnaSF,
+            throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, calculoCol(codigoFuente.get(linea != lineaSig?lineaSig-1:linea-1), columna, 8), lineaSF, columnaSF,
                     "Lista de argumentos mal formada", token.getTipo(),
                     "operador de negacion '!', 'identificador', parentesis abierto '(', cadena, constante entera, constante real", 
                     codigoFuente, token.getLex(), token.getAtributo(), null);
@@ -1350,7 +1363,7 @@ public class Analizador_Sint_Sem {
             Q_tipo = new NodePositionList<>();
 
         } else
-            throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, linea!=lineaSig?columna-contTabAct-3+contTabAct*8:columna-contTabSig-3+contTabSig*8, lineaSF, columnaSF,
+            throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, calculoCol(codigoFuente.get(linea != lineaSig?lineaSig-1:linea-1), columna, 8), lineaSF, columnaSF,
                     "Lista de argumentos sin terminar", token.getTipo(), "',', parentesis cerrada ')'", codigoFuente,
                     token.getLex(), token.getAtributo(), null);
 
@@ -1385,7 +1398,7 @@ public class Analizador_Sint_Sem {
             X_tipo = "vacio";
 
         } else
-            throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, linea!=lineaSig?columna-contTabAct-3+contTabAct*8:columna-contTabSig-3+contTabSig*8, lineaSF, columnaSF,
+            throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, calculoCol(codigoFuente.get(linea != lineaSig?lineaSig-1:linea-1), columna, 8), lineaSF, columnaSF,
                     "Después de 'return' debe venir una expresión o un ';'", token.getTipo(),
                     "operador de negacion '!', 'identificador', parentesis abierto '(', cadena, constante entera, constante real, ';'", codigoFuente, token.getLex(), token.getAtributo(), null);
 
@@ -1438,7 +1451,7 @@ public class Analizador_Sint_Sem {
             T_ancho = 64;
 
         } else
-            throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, linea!=lineaSig?columna-contTabAct-3+contTabAct*8:columna-contTabSig-3+contTabSig*8, lineaSF, columnaSF,
+            throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, calculoCol(codigoFuente.get(linea != lineaSig?lineaSig-1:linea-1), columna, 8), lineaSF, columnaSF,
                     "Tipo de dato faltante o incorrecto", token.getTipo(),
                     "int, float, boolean, string", codigoFuente, token.getLex(), token.getAtributo(), null);
 
@@ -1484,7 +1497,7 @@ public class Analizador_Sint_Sem {
             // Accion Semantica
             INI_tipo = "tipo_ok";
         } else
-            throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, linea!=lineaSig?columna-contTabAct-3+contTabAct*8:columna-contTabSig-3+contTabSig*8, lineaSF, columnaSF,
+            throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, calculoCol(codigoFuente.get(linea != lineaSig?lineaSig-1:linea-1), columna, 8), lineaSF, columnaSF,
                     "Inicialización de bucle 'for' incorrecto", token.getTipo(), "'identificador', ';'", codigoFuente,
                     token.getLex(), token.getAtributo(), null);
 
@@ -1538,7 +1551,7 @@ public class Analizador_Sint_Sem {
             parse = parse.concat("50 ");
             ACTU_tipo = "tipo_ok";
         } else
-            throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, linea!=lineaSig?columna-contTabAct-3+contTabAct*8:columna-contTabSig-3+contTabSig*8, lineaSF, columnaSF,
+            throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, calculoCol(codigoFuente.get(linea != lineaSig?lineaSig-1:linea-1), columna, 8), lineaSF, columnaSF,
                     "Actualización de bucle 'for' incorrecto", token.getTipo(), "'identificador', parentesis cerrado ')'", codigoFuente,
                     token.getLex(), token.getAtributo(), null);
 
@@ -1601,7 +1614,7 @@ public class Analizador_Sint_Sem {
             C_ret = "tipo_ok";
 
         } else{
-            throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, linea!=lineaSig?columna-contTabAct-3+contTabAct*8:columna-contTabSig-3+contTabSig*8, lineaSF, columnaSF,
+            throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, calculoCol(codigoFuente.get(linea != lineaSig?lineaSig-1:linea-1), columna, 8), lineaSF, columnaSF,
                     "Sentencia incorrecta en el bloque de codigo o bloque de código no terminado", token.getTipo(), "'identificador', sentencia escribir 'write', sentencia leer 'read', sentencia de retorno de funcion 'return', declaracion de variable 'let', sentencia condicional 'if', sentencia de bucle 'for', llave cerrada \'}\')",
                     codigoFuente, token.getLex(), token.getAtributo(), null);
             }
@@ -1636,7 +1649,7 @@ public class Analizador_Sint_Sem {
             H_tipo = "vacio"; // Simbolizo que no necesito return
 
         } else
-            throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, linea!=lineaSig?columna-contTabAct-3+contTabAct*8:columna-contTabSig-3+contTabSig*8, lineaSF, columnaSF,
+            throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, calculoCol(codigoFuente.get(linea != lineaSig?lineaSig-1:linea-1), columna, 8), lineaSF, columnaSF,
                     "Se esperaba un tipo de retorno o 'void' en la declaracion de funcion", token.getTipo(), "int, float, boolean, string, void",
                     codigoFuente, token.getLex(), token.getAtributo(), null);
 
@@ -1696,7 +1709,7 @@ public class Analizador_Sint_Sem {
             equipara(new Token(TipoToken.TYPE_VOID, (Integer) null), "Comparando");
             B_tipo.addLast("vacio");
         } else
-            throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, linea!=lineaSig?columna-contTabAct-3+contTabAct*8:columna-contTabSig-3+contTabSig*8, lineaSF, columnaSF,
+            throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, calculoCol(codigoFuente.get(linea != lineaSig?lineaSig-1:linea-1), columna, 8), lineaSF, columnaSF,
                     "Tipo de parametro incorrecto al declarar una funcion", token.getTipo(),
                     "int, float, boolean, string, void", codigoFuente, token.getLex(), token.getAtributo(), null);
 
@@ -1756,7 +1769,7 @@ public class Analizador_Sint_Sem {
             K_tipo.addLast("tipo_ok");
 
         } else
-            throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, linea!=lineaSig?columna-contTabAct-3+contTabAct*8:columna-contTabSig-3+contTabSig*8, lineaSF, columnaSF,
+            throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, calculoCol(codigoFuente.get(linea != lineaSig?lineaSig-1:linea-1), columna, 8), lineaSF, columnaSF,
                     "Lista de parametros en declaracion de una funcion incorrectos o sin acabar", token.getTipo(), "',', parentesis cerrado ')'", codigoFuente,
                     token.getLex(), token.getAtributo(), null);
         return K_tipo;
