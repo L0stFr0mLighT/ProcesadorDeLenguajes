@@ -387,10 +387,13 @@ public class Analizador_Lexico {
                     } else if (estado_actual == 2 || estado_actual == 3) {
                         throw new ComentarioNoTerminadoErr(lineaActual, columna, codigoFuente);
                     } else{
-                        throw new InvalidCaracterErr(lineaActual, columna+2, carActual, codigoFuente);
+                        throw new InvalidCaracterErr(lineaActual, columna, carActual, codigoFuente);
                     }
                 }
 
+                if(accion == null){
+                    throw new InvalidCaracterErr(lineaActual, columna, carActual, codigoFuente);
+                }
                 switch (accion) {
                     // Leer (0-0)
                     case 'A':

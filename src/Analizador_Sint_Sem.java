@@ -806,7 +806,7 @@ public class Analizador_Sint_Sem {
                     if (!E4_tipoArr[i].equals(paramTypes[i])) ok = false;
 
                 if (!ok)
-                    errSem("Parametros de función incorrectos",
+                    errSem("Parametros de función "+ idLex +" incorrectos",
                             "Parametros introducidos: " + paramCadena(E4_tipoArr) + "\nParametros pedidos: "
                             + paramCadena(paramTypes) + "\nPrimera no coincidencia: " + i);
                     
@@ -941,14 +941,14 @@ public class Analizador_Sint_Sem {
                 boolean ok = paramTypes.length == args.length;
                 if (!ok){
                     errSem("Número de parametros incorrectos",
-                    "La función pide " + paramTypes.length + " y se han introducido " + args.length);
+                    "La función pide " + paramTypes.length + " y se han introducido " + (args.length -1));
                 }
                 int i;
                 for (i = 0; i < args.length && ok; i++)
                     if (!args[i].equals(paramTypes[i])) ok = false;
                 
                 if (!ok){
-                    errSem("Parametros de función incorrectos",
+                    errSem("Parametros de función "+ idLex + " incorrectos",
                     "Parametros introducidos: " + paramCadena(args) + "\nParametros pedidos: "
                     + paramCadena(paramTypes) + "\nPrimera no coincidencia es el param. num. " + i);
                 }
