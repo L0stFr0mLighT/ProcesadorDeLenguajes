@@ -157,20 +157,6 @@ public class Analizador_Sint_Sem {
         return res;
     }
 
-    /**
-     * función para convertir NodePositionList<String> a String[] -> lo uso para
-     * lista de tipos de parámetros.
-     * 
-     * @param lista NodePositionList<String>
-     * @return String[]
-     */
-    private String[] listaToStrings(NodePositionList<String> lista) {
-        String[] a = new String[lista.size()];
-        int i = 0;
-        for (String elem : lista)
-            a[i++] = elem;
-        return a;
-    }
 
     /**
      * función auxiliar para comprobar variable o crearla implicitamente en TSGlobal
@@ -430,7 +416,7 @@ public class Analizador_Sint_Sem {
             tiposParam = new String[0];
             numParam = 0;
         } else {
-            tiposParam = listaToStrings(B_tipo);
+            tiposParam = B_tipo.toArray(new String[0]);
             numParam = tiposParam.length;
         }
         gestorTs.setValorAtributoEnt(idPos, ATR_NUM_PARAM, numParam);
@@ -492,15 +478,16 @@ public class Analizador_Sint_Sem {
             // Accion Semantica
             if (E_AND_tipo.equals("tipo_ok")) {
                 E_tipo = E1_tipo;
-            } else {
-                if (!(E1_tipo.equals("logico")))
-                    errSem("Error en expresion logica '&&'", "No se puede comparar tipo " + E1_tipo + " y " + E_AND_tipo);
-
-                if (!(E_AND_tipo.equals("logico")))
-                    errSem("Error en expresion logica", "No se puede comparar tipo " + E1_tipo + " y " + E_AND_tipo);
-
-                E_tipo = "logico";
+            } else if (E1_tipo.equals("logico") && E1_tipo.equals(E_AND_tipo)) {
+                E_tipo = "logico";    
+            } else E_tipo = "tipo_error";
+                
+            if(E_tipo.equals("tipo_error")){    
+                errSem("Error en expresion logica '&&' ",
+                "Solo se puede comparar 2 lógicos y se ha introducido " + E1_tipo + ", " + E_AND_tipo);
             }
+
+            
         } else
             throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, linea!=lineaSig?columna-contTabAct-3+contTabAct*8:columna-contTabSig-3+contTabSig*8, lineaSF, columnaSF,
                     "Se esperaba el inicio de una expresión", token.getTipo(),
@@ -518,6 +505,7 @@ public class Analizador_Sint_Sem {
 
         String E_AND_tipo;
         String E1_tipo;
+        String E_AND1_tipo;
 
         // 6. E_AND -> && E1 E_AND
         if (type == TipoToken.TYPE_AND) {
@@ -525,12 +513,19 @@ public class Analizador_Sint_Sem {
             marcaErrToken(2); // &&
             equipara(new Token(TipoToken.TYPE_AND, (Integer) null), "Comparando");
             E1_tipo = E1();
-            E_AND();
+            E_AND1_tipo = E_AND();
 
             // Accion Semantica
-            if (!E1_tipo.equals("logico"))
-                errSem("Error en expresion logica '&&' ", "Solo se puede comparar 2 lógicos y el segundo valor es " + E1_tipo);
-            E_AND_tipo = "logico";
+            if(E_AND1_tipo.equals("tipo_ok")){
+                E_AND_tipo = "logico";
+            } else if (E_AND1_tipo.equals("logico") && E_AND1_tipo.equals(E1_tipo)){
+                E_AND_tipo = "logico";
+            } else E_AND_tipo = "tipo_error";
+
+            if(E_AND_tipo.equals("tipo_error"))
+                errSem("Error en expresion logica '&&' ",
+                "Solo se puede comparar 2 lógicos y se ha introducido " + E1_tipo + ", " + E_AND1_tipo);
+
 
         }
         // 7. E_AND -> lambda | FOLLOW(E_AND) = { ")", ",", ";" }
@@ -571,15 +566,15 @@ public class Analizador_Sint_Sem {
             // Accion Semantico
             if (E1_REL_tipo.equals("tipo_ok"))
                 E1_tipo = E2_tipo;
-            else {
-                if (!(E2_tipo.equals("real") || E2_tipo.equals("entero")))
-                    errSem("Error en expresion relacional", "Solo se puede comparar 2 reales ó 2 enteros");
-
-                if (!(E2_tipo.equals(E1_REL_tipo)))
-                    errSem("Error en expresion relacional", "No se puede comparar tipo " + E2_tipo + " y " + E1_REL_tipo + "deben de ser del mismo tipo");
-
+            else if ((E2_tipo.equals("real") || E2_tipo.equals("entero")) &&  E2_tipo.equals(E1_REL_tipo))
                 E1_tipo = "logico";
+            else E1_tipo = "tipo_error";
+
+            if(E1_tipo.equals("tipo_error")){
+                errSem("Expresion relacional incorrecta", 
+                "Solo se pueden operar 2 reales ó 2 enteros y se introdujo " + E2_tipo + ", " + E1_REL_tipo);
             }
+            
         } else
             throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, linea!=lineaSig?columna-contTabAct-3+contTabAct*8:columna-contTabSig-3+contTabSig*8, lineaSF, columnaSF,
                     "Expresión incompleta después de operador logico", token.getTipo(),
@@ -607,15 +602,17 @@ public class Analizador_Sint_Sem {
             E2_tipo = E2();
             E1_REL1_tipo = E1_REL();
 
-            // Accion Semantica
-            if (!((E2_tipo.equals("real") || E2_tipo.equals("entero"))))
-                errSem("Desigualdad mayor incorrecta", "Solo se pueden comparar 2 reales ó 2 enteros (se introdujo "+ E2_tipo+")");
+            if (E1_REL1_tipo.equals("tipo_ok")){
+                E1_REL_tipo = E2_tipo;
+            }
+            else if((E2_tipo.equals("entero") || E2_tipo.equals("real")) && (E2_tipo.equals(E1_REL1_tipo))){
+                E1_REL_tipo = "logico";
+            } else E1_REL_tipo = "tipo_error";
 
-            // Si E1_REL1 es tipo_ok entonces no hay mas comparaciones encadenadas
-            if (!(E1_REL1_tipo.equals("tipo_ok")))
-                errSem("Desigualdad mayor incorrecta", "No se puede hacer 2 comparaciones seguidas");
-
-            E1_REL_tipo = E2_tipo;
+            if(E1_REL_tipo.equals("tipo_error")){
+                errSem("Expresion relacional incorrecta", 
+                "Solo se pueden operar 2 reales ó 2 enteros y se introdujo "+ E2_tipo + ", " + E1_REL1_tipo);
+            }
 
         }
         // 10. E1_REL -> < E2 E1_REL
@@ -627,14 +624,17 @@ public class Analizador_Sint_Sem {
             E1_REL1_tipo = E1_REL();
 
             // Accion Semantica
-            if (!((E2_tipo.equals("real") || E2_tipo.equals("entero"))))
-                errSem("Desigualdad menor incorrecta", "Solo se pueden comparar real ó entero (se introdujo "+ E2_tipo+")");
+            if (E1_REL1_tipo.equals("tipo_ok")){
+                E1_REL_tipo = E2_tipo;
+            }
+            else if((E2_tipo.equals("entero") || E2_tipo.equals("real")) && (E2_tipo.equals(E1_REL1_tipo))){
+                E1_REL_tipo = "logico";
+            } else E1_REL_tipo = "tipo_error";
 
-            // Si E1_REL1 es tipo_ok entonces no hay mas comparaciones encadenadas
-            if (!(E1_REL1_tipo.equals("tipo_ok")))
-                errSem("Desigualdad menor incorrecta", "No se puede hacer encadenamientos de comparaciones ");
-
-            E1_REL_tipo = E2_tipo;
+            if(E1_REL_tipo.equals("tipo_error")){
+                errSem("Expresion relacional incorrecta", 
+                "Solo se pueden operar 2 reales ó 2 enteros y se introdujo "+ E2_tipo + ", " + E1_REL1_tipo);
+            }
 
         }
         // 11. E1_REL -> lambda | FOLLOW(E1_REL) = { "&&", ")", ",", ";" }
@@ -671,16 +671,16 @@ public class Analizador_Sint_Sem {
             E2_ARIT_tipo = E2_ARIT();
 
             // Accion Semantica
-            if (E2_ARIT_tipo.equals("tipo_ok"))
+            if (E2_ARIT_tipo.equals("tipo_ok")){
                 E2_tipo = E3_tipo;
-            else {
-                if (!(E3_tipo.equals("real") || E3_tipo.equals("entero")))
-                    errSem("Error en expresion aritmetica", "Solo puede sumar o restar 2 reales ó 2 enteros (se introdujo "+ E3_tipo+")");
-
-                if (!(E2_ARIT_tipo.equals(E3_tipo)))
-                    errSem("Error en expresion aritmetica", "No hay conversion de tipos entre " + E3_tipo + " y " + E2_ARIT_tipo);
-
+            }
+            else if((E3_tipo.equals("entero") || E3_tipo.equals("real")) && (E3_tipo.equals(E2_ARIT_tipo))){
                 E2_tipo = E3_tipo;
+            } else E2_tipo = "tipo_error";
+
+            if(E2_tipo.equals("tipo_error")){
+                errSem("Expresion aritmetica incorrecta", 
+                "Solo se pueden operar 2 reales ó 2 enteros y se introdujo "+ E3_tipo + " , " + E2_ARIT_tipo);
             }
 
         } else
@@ -710,14 +710,17 @@ public class Analizador_Sint_Sem {
             E2_ARIT1_tipo = E2_ARIT();
 
             // Accion Semantica
-            if (!((E3_tipo.equals("real") || E3_tipo.equals("entero"))))
-                errSem("Expresion suma incorrecta", "Solo se pueden sumar real ó entero (se introdujo "+ E3_tipo+")");
+            if(E2_ARIT1_tipo.equals("tipo_ok")){
+                E2_ARIT_tipo = E3_tipo;      
+            }
+            else if((E3_tipo.equals("entero") || E3_tipo.equals("real")) && (E3_tipo.equals(E2_ARIT1_tipo))){
+                E2_ARIT_tipo = E3_tipo;
+            } else E2_ARIT_tipo = "tipo_error";
 
-            // Si E2_ARIT es tipo_ok entonces no hay mas sumas encadenadas
-            if (!(E2_ARIT1_tipo.equals(E3_tipo) || E2_ARIT1_tipo.equals("tipo_ok")))
-                errSem("Expresion suma incorrecta", "No hay conversion de tipos entre " + E2_ARIT1_tipo + " y " + E3_tipo);
-
-            E2_ARIT_tipo = E3_tipo;
+            if(E2_ARIT_tipo.equals("tipo_error")){
+                errSem("Expresion aritmetica incorrecta", 
+                "Solo se pueden operar 2 reales ó 2 enteros y se introdujo "+ E3_tipo + " , " + E2_ARIT1_tipo);
+            }
 
         }
         // 14. E2_ARIT -> - E3 E2_ARIT
@@ -729,14 +732,17 @@ public class Analizador_Sint_Sem {
             E2_ARIT1_tipo = E2_ARIT();
 
             // Accion Semantica
-            if (!((E3_tipo.equals("real") || E3_tipo.equals("entero"))))
-                errSem("Expresion resta incorrecta", "Solo se pueden restar real ó entero (se introdujo "+ E3_tipo+")");
+            if(E2_ARIT1_tipo.equals("tipo_ok")){
+                E2_ARIT_tipo = E3_tipo;      
+            }
+            else if((E3_tipo.equals("entero") || E3_tipo.equals("real"))&&(E3_tipo.equals(E2_ARIT1_tipo))){
+                E2_ARIT_tipo = E3_tipo;
+            } else E2_ARIT_tipo = "tipo_error";
 
-            // Si E2_ARIT es tipo_ok entonces no hay mas restas encadenadas
-            if (!(E2_ARIT1_tipo.equals(E3_tipo) || E2_ARIT1_tipo.equals("tipo_ok")))
-                errSem("Expresion resta incorrecta", "No hay conversion de tipos entre " + E2_ARIT1_tipo + " y " + E3_tipo);
-
-            E2_ARIT_tipo = E3_tipo;
+            if(E2_ARIT_tipo.equals("tipo_error")){
+                errSem("Expresion aritmetica incorrecta", 
+                "Solo se pueden operar 2 reales ó 2 enteros y se introdujo "+ E3_tipo + " + " + E2_ARIT1_tipo);
+            }
 
         }
         // 15. E2_ARIT -> lambda | FOLLOW(E2_ARIT) = { ">", "<", "&&", ")", ",", ";" }
@@ -761,10 +767,13 @@ public class Analizador_Sint_Sem {
      * @return E3.tipo
      */
     private String E3() {
-        String E3_tipo;
+        String E3_tipo = null;
         String E31_tipo;
         String E_tipo;
         NodePositionList<String> E4_tipo;
+        String idLex;
+        int idPos;
+        String idTipo;
 
         // 16. E3 -> ! E3
         if (type == TipoToken.TYPE_NEGACION) {
@@ -774,67 +783,57 @@ public class Analizador_Sint_Sem {
             E31_tipo = E3();
 
             // Accion Semantica
-            if (!E31_tipo.equals("logico"))
+            if (E31_tipo.equals("logico")) E3_tipo = "logico";
+            else E3_tipo = "tipo_error";
+            
+            if(E3_tipo.equals("tipo_error")) 
                 errSem("Negación incorrecta",
-                        "Solo se puede negar una expresión lógica (se esta intentando negar una expresión de tipo " + E31_tipo+")");
+                    "Solo se puede negar una expresión lógica (se esta intentando negar una expresión de tipo " + E31_tipo+")");
 
-            E3_tipo = "logico";
         }
 
         // 17. E3 -> id E4
         else if (type == TipoToken.TYPE_IDENTIFICADOR) {
             parse = parse.concat("17 ");
 
+            idLex = token.getLex(); //Se guarda el lexema para imprimirla en el error
+            
             marcaErrLexema();
-            boolean esLlamada = tokenSig != null &&
-                    tokenSig.equals(new Token(TipoToken.TYPE_PARENTESIS, (Integer) 0)); // '('
 
-            // Capturo datos del id
-            String idLex = token.getLex();
-            int idPos;
-
-            if (!esLlamada) {
-                // variable
-                idPos = aseguraVarImpl(idLex);
-            } else {
-                // Compruebo que ya sea una función declarada
-                idPos = gestorTs.getEntradaTSGlobal(idLex);
-                if (idPos == 0) {
-                    errSem("función no declarada previamente",
-                            "La función " + idLex + " no esta declarado y no se puede declarar implicitamente");
-                }
-            }
-            token.setAtributo(idPos);
-            token.setPos(idPos);
             equipara(new Token(TipoToken.TYPE_IDENTIFICADOR, (Integer) null), "Expresion incorrecta");
             E4_tipo = E4();
 
-            if (!esLlamada) {
-                String idTipo = normalizarTipo(gestorTs.getTipo(idPos),false);
-                E3_tipo = idTipo;
-            } else {
+            idPos = aseguraVarImpl(idLex);           
+            idTipo = normalizarTipo(gestorTs.getTipo(idPos),false);
+           
+            if(idTipo.equals("función")){
+
+                String[] E4_tipoArr = E4_tipo.toArray(new String[0]);
+                String[] paramTypes = gestorTs.getValorAtributoLista(idPos, ATR_TIPO_PARAM);
 
                 // Compruebo lista de parametros
-                String[] args = (E4_tipo.size() == 1 && E4_tipo.first().element().equals("vacio")) ? new String[0]
-                        : listaToStrings(E4_tipo);
-                String[] paramTypes = gestorTs.getValorAtributoLista(idPos, ATR_TIPO_PARAM);
-                if (paramTypes == null)
-                    paramTypes = new String[0];
-                boolean ok = paramTypes.length == args.length;
-                if (!ok)
-                    errSem("Número de parametros incorrectos",
-                            "La función pide " + paramTypes.length + " y se han introducido " + args.length);
+                boolean ok = paramTypes.length == E4_tipoArr.length;
+                if (!ok) errSem("Número de parametros incorrectos",
+                                "La función pide " + paramTypes.length + " y se han introducido " + E4_tipoArr.length);
 
                 int i;
-                for (i = 0; i < args.length && ok; i++)
-                    if (!args[i].equals(paramTypes[i]))
-                        ok = false;
+                for (i = 0; i < E4_tipoArr.length && ok; i++)
+                    if (!E4_tipoArr[i].equals(paramTypes[i])) ok = false;
+
                 if (!ok)
                     errSem("Parametros de función incorrectos",
-                            "Parametros introducidos: " + paramCadena(args) + "\nParametros pedidos: "
-                                    + paramCadena(paramTypes) + "\nPrimera no coincidencia: " + i);
-
+                            "Parametros introducidos: " + paramCadena(E4_tipoArr) + "\nParametros pedidos: "
+                            + paramCadena(paramTypes) + "\nPrimera no coincidencia: " + i);
+                    
                 E3_tipo = gestorTs.getValorAtributoCad(idPos, ATR_TIPO_RET);
+
+            } else if (E4_tipo.size() == 0){
+                errSem("Llamada a una funcion implicitamente",
+                "La función " + idLex  + " no previamente declarada se ha supuesto que es una variable entera ");
+
+            } else if (E4_tipo.first().element().equals("vacio")){
+                E3_tipo = idTipo;
+                
             }
         }
 
@@ -946,65 +945,45 @@ public class Analizador_Sint_Sem {
 
             marcaErrLexema(); // id
             String idLex = token.getLex();
-
-            boolean esAsignacion = tokenSig != null && tokenSig.getTipo() == TipoToken.TYPE_ASIGNACION;
-            boolean esLlamada = tokenSig != null && tokenSig.equals(new Token(TipoToken.TYPE_PARENTESIS, (Integer) 0));
-
-            // tactica looking ahead
-            if (esAsignacion) {
-                // id es VARIABLE
-                idPos = aseguraVarImpl(idLex);
-
-            } else if (esLlamada) {
-                // id es función
-                idPos = gestorTs.getEntradaTSGlobal(idLex);
-                // Debe ser una llamada a función y esta tiene que estar declarada
-                if (idPos == 0) {
-                    errSem("función no declarada previamente",
-                            "La función " + idLex + " no esta declarado y no se puede declarar implicitamente");
-                }
-            }
-            // si el siguiente token no es ninguno de los dos esperados, dejo pasar el id
-            // como 0 pq totalmente ASIGFUN seguro que da error
-            token.setAtributo(idPos);
-            token.setPos(idPos);
+    
             equipara(new Token(TipoToken.TYPE_IDENTIFICADOR, (Integer) null), "Llamada a funcion o asignacion incorrecta");
-
             ASIGFUN_tipo = ASIGFUN();
-            if (esAsignacion) {
-                idTipo = normalizarTipo(gestorTs.getTipo(idPos),false);
-
-                String asigTipo = ASIGFUN_tipo.first().element();
-                if (!asigTipo.equals(idTipo)){
-                    errSem("Asignacion incorrecta",
-                            "El tipo de " + idLex + " (" + idTipo + ") es incompatible con el tipo de asignacion "
-                                    + "(" + asigTipo + ")");
-                }
-                S_SIMPLE_tipo = "tipo_ok";
-            } else {
+            
+            String asigTipo = ASIGFUN_tipo.next(ASIGFUN_tipo.first()).element();
+            String asigFunfun = ASIGFUN_tipo.first().element();
+            idPos = aseguraVarImpl(idLex);
+            idTipo = normalizarTipo(gestorTs.getTipo(idPos),false);
+            
+            if(idTipo.equals("función")){
                 // Compruebo lista de parametros
-                String[] args = (ASIGFUN_tipo.size() == 1 && ASIGFUN_tipo.first().element().equals("vacio"))
-                        ? new String[0]
-                        : listaToStrings(ASIGFUN_tipo);
                 String[] paramTypes = gestorTs.getValorAtributoLista(idPos, ATR_TIPO_PARAM);
-                if (paramTypes == null)
-                    paramTypes = new String[0]; // Esto es innecesario si meto bien siempre la lista de param
+                ASIGFUN_tipo.remove(ASIGFUN_tipo.first());
+                String[] args = ASIGFUN_tipo.toArray(new String[0]);
                 boolean ok = paramTypes.length == args.length;
                 if (!ok){
                     errSem("Número de parametros incorrectos",
-                            "La función pide " + paramTypes.length + " y se han introducido " + args.length);
+                    "La función pide " + paramTypes.length + " y se han introducido " + args.length);
                 }
                 int i;
                 for (i = 0; i < args.length && ok; i++)
-                    if (!args[i].equals(paramTypes[i]))
-                        ok = false;
+                    if (!args[i].equals(paramTypes[i])) ok = false;
+
                 if (!ok){
                     errSem("Parametros de función incorrectos",
                             "Parametros introducidos: " + paramCadena(args) + "\nParametros pedidos: "
-                                    + paramCadena(paramTypes) + "\nPrimera no coincidencia es el param. num. " + i);
+                            + paramCadena(paramTypes) + "\nPrimera no coincidencia es el param. num. " + i);
                 }
                 S_SIMPLE_tipo = "tipo_ok";
+
+            } else if (asigFunfun.equals("true")){
+                errSem("LLamada a función no declarada previamente",
+                            "La función " + idLex + " no esta declarado y no se puede declarar implicitamente");
+            } else if (!asigTipo.equals(idTipo)){
+                    errSem("Asignacion incorrecta",
+                    "El tipo de " + idLex + " (" + idTipo + ") es incompatible con el tipo de asignacion " + "(" + asigTipo + ")");
             }
+            
+            S_SIMPLE_tipo = "tipo_ok";
             S_SIMPLE_ret = "tipo_ok";
         }
         // 27. S_SIMPLE -> write E ;
@@ -1217,6 +1196,7 @@ public class Analizador_Sint_Sem {
 
             // Accion Semantica
             ASIGFUN_tipo = new NodePositionList<>();
+            ASIGFUN_tipo.addFirst("false");
             if (A_tipo.equals("logico") && E_tipo.equals("logico") ||
                     A_tipo.equals("tipo_ok")) {
                 ASIGFUN_tipo.addLast(E_tipo);
@@ -1236,6 +1216,8 @@ public class Analizador_Sint_Sem {
 
             // Accion Semantica
             ASIGFUN_tipo = new NodePositionList<>(L_tipo);
+            ASIGFUN_tipo.addFirst("true");
+
 
         } else
             throw new Token_Inesperado(lineaAnterior, columnaAnterior, linea, linea!=lineaSig?columna-contTabAct-3+contTabAct*8:columna-contTabSig-3+contTabSig*8, lineaSF, columnaSF,
