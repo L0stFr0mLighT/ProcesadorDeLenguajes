@@ -812,14 +812,10 @@ public class Analizador_Sint_Sem {
                     
                 E3_tipo = gestorTs.getValorAtributoCad(idPos, ATR_TIPO_RET);
 
-            } else if (E4_tipo.size() == 0){
+            } else if (E4_tipo.size() == 0 || !E4_tipo.first().element().equals("vacio")){
                 errSem("Llamada a una funcion implicitamente",
-                "La función " + idLex  + " no previamente declarada se ha supuesto que es una variable entera ");
-
-            } else if (E4_tipo.first().element().equals("vacio")){
-                E3_tipo = idTipo;
-                
-            }
+                "La función " + idLex  + " no es una funcion declarada previamente y no se puede llamar implicitamente");
+            } else E3_tipo = idTipo;
         }
 
         // 18. E3 -> ( E )
@@ -912,30 +908,28 @@ public class Analizador_Sint_Sem {
      * Función para el analisis de la producion S_SIMPLE.
      * 
      * @return S_SIMPLE.tipo y S_SIMPLE.ret (ambos Strings)
-     */
-    private Pair<String, String> S_SIMPLE() {
-        String S_SIMPLE_tipo;
-        NodePositionList<String> ASIGFUN_tipo;
-        String S_SIMPLE_ret;
-        String idTipo;
-        int idPos = 0;
-        String E_tipo;
-        String X_tipo;
-
-        marcaInicioSentencia(); // Checkpoint para CONTEXTO del error
-
-        // 26. S_SIMPLE -> id ASIGFUN
+    */
+   private Pair<String, String> S_SIMPLE() {
+       String S_SIMPLE_tipo;
+       NodePositionList<String> ASIGFUN_tipo;
+       String S_SIMPLE_ret;
+       String idTipo;
+       int idPos = 0;
+       String E_tipo;
+       String X_tipo;
+       
+       marcaInicioSentencia(); // Checkpoint para CONTEXTO del error
+       
+       // 26. S_SIMPLE -> id ASIGFUN
         if (type == TipoToken.TYPE_IDENTIFICADOR) {
             parse = parse.concat("26 ");
 
             marcaErrLexema(); // id
             String idLex = token.getLex();
-    
+            
             equipara(new Token(TipoToken.TYPE_IDENTIFICADOR, (Integer) null), "Llamada a funcion o asignacion incorrecta");
             ASIGFUN_tipo = ASIGFUN();
             
-            String asigTipo = ASIGFUN_tipo.next(ASIGFUN_tipo.first()).element();
-            String asigFunfun = ASIGFUN_tipo.first().element();
             idPos = aseguraVarImpl(idLex);
             idTipo = normalizarTipo(gestorTs.getTipo(idPos),false);
             
@@ -952,20 +946,20 @@ public class Analizador_Sint_Sem {
                 int i;
                 for (i = 0; i < args.length && ok; i++)
                     if (!args[i].equals(paramTypes[i])) ok = false;
-
+                
                 if (!ok){
                     errSem("Parametros de función incorrectos",
-                            "Parametros introducidos: " + paramCadena(args) + "\nParametros pedidos: "
-                            + paramCadena(paramTypes) + "\nPrimera no coincidencia es el param. num. " + i);
+                    "Parametros introducidos: " + paramCadena(args) + "\nParametros pedidos: "
+                    + paramCadena(paramTypes) + "\nPrimera no coincidencia es el param. num. " + i);
                 }
                 S_SIMPLE_tipo = "tipo_ok";
-
-            } else if (asigFunfun.equals("true")){
+            
+            } else if (ASIGFUN_tipo.size() == 1 || ASIGFUN_tipo.first().element().equals("true")){
                 errSem("LLamada a función no declarada previamente",
-                            "La función " + idLex + " no esta declarado y no se puede declarar implicitamente");
-            } else if (!asigTipo.equals(idTipo)){
+                "La función " + idLex + " no esta declarado y no se puede declarar implicitamente");
+            } else if (!ASIGFUN_tipo.next(ASIGFUN_tipo.first()).element().equals(idTipo)){
                     errSem("Asignacion incorrecta",
-                    "El tipo de " + idLex + " (" + idTipo + ") es incompatible con el tipo de asignacion " + "(" + asigTipo + ")");
+                    "El tipo de " + idLex + " (" + idTipo + ") es incompatible con el tipo de asignacion " + "(" + ASIGFUN_tipo.next(ASIGFUN_tipo.first()).element() + ")");
             }
             
             S_SIMPLE_tipo = "tipo_ok";
