@@ -367,8 +367,6 @@ public class Analizador_Lexico {
                         accion = 'A';
                         estado_destino = 2;
                     } else{
-                                                System.out.println(lineaActual);
-                        System.out.println(columna);
                         throw new InvalidCaracterErr(lineaActual, columna+2, carActual, codigoFuente);
                     }
                 }
