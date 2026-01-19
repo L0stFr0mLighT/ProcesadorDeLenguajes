@@ -369,7 +369,7 @@ public class Analizador_Lexico {
                     } else{
                                                 System.out.println(lineaActual);
                         System.out.println(columna);
-                        throw new InvalidCaracterErr(lineaActual, columna+2, estado_actual, carActual, codigoFuente);
+                        throw new InvalidCaracterErr(lineaActual, columna+2, carActual, codigoFuente);
                     }
                 }
                 /*
@@ -385,11 +385,11 @@ public class Analizador_Lexico {
                 // Si el caracter leido no es aceptado (transicion inexistente)
                 if (estado_destino == null) {
                     if (estado_actual == 9) {
-                        throw new CadenaNoTerminadaErr(lineaActual, columna, lex, codigoFuente, lex.length(), contTab);
+                        throw new CadenaNoTerminadaErr(lineaActual, columna, lex, codigoFuente);
                     } else if (estado_actual == 2 || estado_actual == 3) {
                         throw new ComentarioNoTerminadoErr(lineaActual, columna, codigoFuente);
                     } else{
-                        throw new InvalidCaracterErr(lineaActual, columna+2, estado_actual, carActual, codigoFuente);
+                        throw new InvalidCaracterErr(lineaActual, columna+2, carActual, codigoFuente);
                     }
                 }
 
@@ -413,7 +413,7 @@ public class Analizador_Lexico {
                         // EXCEPTION: entero demasiado grande
                         if (num >= 32767) {
                             lex = "" + (int) num;
-                            throw new IntTooLargeErr(lineaActual, columna, (int) num, codigoFuente, lex.length());
+                            throw new IntTooLargeErr(lineaActual, columna, (int) num, codigoFuente);
                         }
                         token = new Token(TipoToken.TYPE_ENTERO, (Integer) (int) num);
                         break;
@@ -434,7 +434,7 @@ public class Analizador_Lexico {
                         // EXCEPTION: real demasiado grande
                         if (!(num < 117549436.0)) {
                             lex = "" + (double) num;
-                            throw new RealTooLargeErr(lineaActual, columna, (double) num, codigoFuente, lex.length());
+                            throw new RealTooLargeErr(lineaActual, columna, (double) num, codigoFuente);
 
                         }
                         // EXCEPTION: inexistencia de decimales
@@ -522,8 +522,7 @@ public class Analizador_Lexico {
                     // Genero Token Cadena (9-18)
                     case 'O':
                         if (lex.length() >= 64)
-                            throw new CadenaTooLargeErr(lineaActual, columna, lex, lex.length(), codigoFuente,
-                                    lex.length());
+                            throw new CadenaTooLargeErr(lineaActual, columna, lex, lex.length(), codigoFuente);
                         token = new Token(TipoToken.TYPE_CADENA, lex);
                         carActual = leer(fr);
                         break;
