@@ -9,16 +9,16 @@ import Errores.TipoError;
 
 public class Token_Inesperado extends Err{
     
-    public Token_Inesperado (int lineaAnterior, int columnaAnterior,int lineaSiguiente, int columnaSiguiente, int lineaS, int columnaS, String contexto, 
+    public Token_Inesperado (int lineaAnterior, int columnaAnterior,int lineaSiguiente, int lineaS, String contexto, 
      TipoToken encontrado, String esperado, List<String> codigoFuente, String lexTk, Integer atrEncontrado, Integer atrEsperado){
-        super(lineaAnterior, columnaAnterior,lineaSiguiente,columnaSiguiente,lineaS, columnaS,TipoError.SINTACTICO,CodError.TOKEN_INESPERADO.ordinal(),
-        ConstructorMensaje(contexto, encontrado, esperado, lexTk, atrEncontrado, atrEsperado), codigoFuente, longtitudErr(lexTk));
+        super(lineaAnterior, columnaAnterior,lineaSiguiente,lineaS,TipoError.SINTACTICO,CodError.TOKEN_INESPERADO.ordinal(),
+        ConstructorMensaje(contexto, encontrado, esperado, lexTk, atrEncontrado, atrEsperado), codigoFuente);
     }
 
-    public Token_Inesperado (int lineaAnterior, int columnaAnterior,int lineaSiguiente, int columnaSiguiente, int lineaS, int columnaS, String contexto, 
+    public Token_Inesperado (int lineaAnterior, int columnaAnterior,int lineaSiguiente, int lineaS, String contexto, 
      TipoToken encontrado, TipoToken esperado, List<String> codigoFuente, String lexTk, Integer atrEncontrado, Integer atrEsperado){
-        super(lineaAnterior, columnaAnterior,lineaSiguiente,columnaSiguiente,lineaS, columnaS,TipoError.SINTACTICO,CodError.TOKEN_INESPERADO.ordinal(),
-        ConstructorMensaje(contexto, encontrado, normalizarMensajeEsp(esperado, lexTk, atrEsperado), lexTk, atrEncontrado, atrEsperado), codigoFuente, longtitudErr(lexTk));
+        super(lineaAnterior, columnaAnterior,lineaSiguiente,lineaS,TipoError.SINTACTICO,CodError.TOKEN_INESPERADO.ordinal(),
+        ConstructorMensaje(contexto, encontrado, normalizarMensajeEsp(esperado, lexTk, atrEsperado), lexTk, atrEncontrado, atrEsperado), codigoFuente);
     }
 
     private static String normalizarMensajeEsp(TipoToken tt, String lexTk, Integer atributo){
@@ -295,9 +295,5 @@ public class Token_Inesperado extends Err{
         String lexTk, Integer atrEncontrado, Integer atrEsperado){
         return contexto + "\n"+ normalizarMensaje(encontrado,lexTk, atrEncontrado) + 
             "\nSe esperaba: "+esperado;
-    }
-
-    private static int longtitudErr(String lexTk){
-        return lexTk == null? 1:lexTk.length();
     }
 }

@@ -4,13 +4,13 @@ import java.util.List;
 
 public abstract class Err extends RuntimeException {
 
-    public Err(int lineaAntigua, int columnaAntigua, int lineaSiguiente,int columnaSiguiente, int lineaS, int columnaS, TipoError tipoError, int codError, String descrip, List<String> codigoFuente, int longitudErr) {
+    public Err(int lineaAntigua, int columnaAntigua, int lineaSiguiente, int lineaS, TipoError tipoError, int codError, String descrip, List<String> codigoFuente) {
         
-        super(constructorMensaje(lineaAntigua, columnaAntigua,lineaSiguiente, columnaSiguiente, lineaS, columnaS, tipoError, codError, descrip, codigoFuente, longitudErr));
+        super(constructorMensaje(lineaAntigua, columnaAntigua,lineaSiguiente, lineaS, tipoError, codError, descrip, codigoFuente));
         
     }
 
-    private static String constructorMensaje (int lineaAntigua, int columnaAntigua, int lineaSiguiente, int columnaSiguiente, int lineaS, int columnaS, TipoError tipoError, int codError, String descrip, List<String> codigoFuente, int longitudErr){
+    private static String constructorMensaje (int lineaAntigua, int columnaAntigua, int lineaSiguiente, int lineaS, TipoError tipoError, int codError, String descrip, List<String> codigoFuente){
         
         String mensaje = "\n------ ERROR " + tipoError + " ------\n";
         mensaje += "(" + lineaAntigua + "," + columnaAntigua + ") " +"ERR-" +codError + ": "; //linea y columna de token ya consumido (ultimo bueno)
@@ -19,7 +19,7 @@ public abstract class Err extends RuntimeException {
         // Asegurar rangos válidos
         int inicio = Math.max(1, lineaS);
         int fin = Math.min(codigoFuente.size(), lineaSiguiente);  
-
+    
         // Imprimir todas las líneas desde S hasta Siguiente (Contexto del error)
         for (int linea = inicio; linea <= fin; linea++) {
 
@@ -27,20 +27,6 @@ public abstract class Err extends RuntimeException {
 
             //Imprimimos linea de forma: " xx| texto" (Espero que no haya más de 99 líneas :) )
             mensaje += String.format("%2d| %s\n", linea, texto);
-
-            // marcar ^
-            if (linea == lineaSiguiente) {
-
-                mensaje += "   "; // espacio alineado con el margen "xx|"
-
-                // Espacios hasta la columna donde ocurrió el error
-                for (int i = 1; i < columnaSiguiente-1; i++) mensaje += " ";
-
-                // Marcar el error
-                for (int i = 0; i < longitudErr; i++) mensaje += "^";
-
-                mensaje += "\n";
-            }
         }
         mensaje += "--------------------------\n";
         return mensaje;
