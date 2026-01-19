@@ -799,7 +799,7 @@ public class Analizador_Sint_Sem {
                 // Compruebo lista de parametros
                 boolean ok = paramTypes.length == E4_tipoArr.length;
                 if (!ok) errSem("Número de parametros incorrectos",
-                                "La función pide " + paramTypes.length + " y se han introducido " + E4_tipoArr.length);
+                                "La función " + idLex + " pide " + paramTypes.length + " y se han introducido " + E4_tipoArr.length);
 
                 int i;
                 for (i = 0; i < E4_tipoArr.length && ok; i++)
@@ -813,7 +813,7 @@ public class Analizador_Sint_Sem {
                 E3_tipo = gestorTs.getValorAtributoCad(idPos, ATR_TIPO_RET);
 
             } else if (E4_tipo.size() == 0 || !E4_tipo.first().element().equals("vacio")){
-                errSem("Llamada a una funcion implicitamente",
+                errSem("Llamada a una funcion implicitamente o no declarada",
                 "La función " + idLex  + " no es una funcion declarada previamente y no se puede llamar implicitamente");
             } else E3_tipo = idTipo;
         }
@@ -955,8 +955,9 @@ public class Analizador_Sint_Sem {
                 S_SIMPLE_tipo = "tipo_ok";
             
             } else if (ASIGFUN_tipo.size() == 1 || ASIGFUN_tipo.first().element().equals("true")){
-                errSem("LLamada a función no declarada previamente",
-                "La función " + idLex + " no esta declarado y no se puede declarar implicitamente");
+                errSem("Llamada a una funcion implicitamente o no declarada",
+                "La función " + idLex + " no es una funcion declarada previamente y no se puede llamar implicitamente");
+
             } else if (!ASIGFUN_tipo.next(ASIGFUN_tipo.first()).element().equals(idTipo)){
                     errSem("Asignacion incorrecta",
                     "El tipo de " + idLex + " (" + idTipo + ") es incompatible con el tipo de asignacion " + "(" + ASIGFUN_tipo.next(ASIGFUN_tipo.first()).element() + ")");
