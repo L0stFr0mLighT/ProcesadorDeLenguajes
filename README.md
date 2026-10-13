@@ -42,7 +42,3 @@ ArbolC*.html                   # Ejemplos de árboles sintácticos generados
 Jia Jie Ye - L0stFr0mLighT
 Yurong Cheng - Yurong0q
 Yun Chen - YuuAhhm
-
-Trabajo en equipo de:
-- **Ye** – [GitHub](https://github.com/TU-USUARIO)
-- **Nombre del compañero** – [GitHub](https://github.com/SU-USUARIO)
