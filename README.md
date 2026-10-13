@@ -1,18 +1,48 @@
-## Getting Started
+# Procesador de Lenguajes
 
-Welcome to the VS Code Java world. Here is a guideline to help you get started to write Java code in Visual Studio Code.
+Analizador léxico, sintáctico y semántico en **Java**. Es la práctica de la asignatura *Procesadores de Lenguajes* de la Universidad Politécnica de Madrid.
 
-## Folder Structure
+## Qué hace
 
-The workspace contains two folders by default, where:
+A partir de un fichero con código fuente, el procesador:
 
-- `src`: the folder to maintain sources
-- `lib`: the folder to maintain dependencies
+- **Analizador léxico:** reconoce los tokens con un autómata finito (tabla de transiciones) y rellena la tabla de símbolos.
+- **Analizador sintáctico:** es descendente recursivo y valida el programa con una gramática LL(1). Genera el *parse* (la secuencia de reglas aplicadas).
+- **Gestión de errores:** detecta errores léxicos (cadenas o comentarios sin cerrar, números o identificadores demasiado largos, caracteres no válidos), sintácticos (tokens inesperados) y semánticos (secuencia incorrecta)
 
-Meanwhile, the compiled output files will be generated in the `bin` folder by default.
+El lenguaje admite variables tipadas (`let int x;`), `if`, `for`, `read`/`write`, funciones con parámetros y `return`, y operadores aritméticos, relacionales y lógicos.
 
-> If you want to customize the folder structure, open `.vscode/settings.json` and update the related settings there.
+## Estructura
 
-## Dependency Management
+```
+src/
+├── Procesador.java            # Punto de entrada
+├── Analizador_Lexico.java     # Autómata del léxico
+├── Analizador_Sintactico.java # Parser descendente recursivo
+├── TablaDeSimbolos.java
+├── Token.java / TokenTexto.java
+├── Enumeraciones/             # Tipos de token, estados, caracteres
+├── Errores/                   # Un tipo de excepción por cada error
+└── gramaticaASt.txt           # Gramática del lenguaje
+lib/                           # Librerías de la asignatura (tabla de símbolos)
+ArbolC*.html                   # Ejemplos de árboles sintácticos generados
+```
 
-The `JAVA PROJECTS` view allows you to manage your dependencies. More details can be found [here](https://github.com/microsoft/vscode-java-dependency#manage-dependencies).
+## Cómo ejecutarlo
+
+1. Abre el proyecto en VS Code con la extensión de Java (las librerías de `lib/` se cargan solas).
+2. En `Procesador.java`, cambia la variable `ruta` para que apunte a tu fichero de código.
+3. Ejecuta `Procesador`. Se generan tres ficheros:
+   - `tokens.txt`: lista de tokens
+   - `parse.txt`: parse del programa (se puede visualizar como árbol con la herramienta VASt de la UPM)
+   - `tabladesimbolos.txt`: contenido de la tabla de símbolos
+
+## Autores
+
+Jia Jie Ye - L0stFr0mLighT
+Yurong Cheng - Yurong0q
+Yun Chen - YuuAhhm
+
+Trabajo en equipo de:
+- **Ye** – [GitHub](https://github.com/TU-USUARIO)
+- **Nombre del compañero** – [GitHub](https://github.com/SU-USUARIO)
