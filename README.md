@@ -39,6 +39,6 @@ ArbolC*.html                   # Ejemplos de árboles sintácticos generados
 
 ## Autores
 
-Jia Jie Ye - L0stFr0mLighT
-Yurong Cheng - Yurong0q
-Yun Chen - YuuAhhm
+- Jia Jie Ye - L0stFr0mLighT
+- Yurong Cheng - Yurong0q
+- Yun Chen - YuuAhhm
